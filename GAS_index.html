@@ -1,0 +1,1781 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="แอปติดตามรายรับรายจ่ายส่วนตัว ซิงค์ข้อมูลผ่าน Google Sheets" />
+    <title>MoneyFlow — รายรับรายจ่าย</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+/* ========================
+   Design Tokens / Variables
+   ======================== */
+:root {
+  --bg-base: #0a0d14;
+  --bg-card: rgba(255, 255, 255, 0.04);
+  --bg-card-hover: rgba(255, 255, 255, 0.07);
+  --bg-sidebar: rgba(10, 13, 20, 0.85);
+  --bg-modal: #111827;
+  --bg-input: rgba(255, 255, 255, 0.06);
+
+  --accent-green: #22c55e;
+  --accent-green-glow: rgba(34, 197, 94, 0.25);
+  --accent-red: #f43f5e;
+  --accent-red-glow: rgba(244, 63, 94, 0.25);
+  --accent-blue: #3b82f6;
+  --accent-purple: #a855f7;
+
+  --gradient-income: linear-gradient(135deg, #22c55e, #16a34a);
+  --gradient-expense: linear-gradient(135deg, #f43f5e, #e11d48);
+  --gradient-balance: linear-gradient(135deg, #3b82f6, #a855f7);
+  --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(59, 130, 246, 0.6);
+
+  --sidebar-width: 240px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-glow-green: 0 0 30px rgba(34, 197, 94, 0.15);
+  --shadow-glow-red: 0 0 30px rgba(244, 63, 94, 0.15);
+
+  --font-sans: 'Noto Sans Thai', 'Inter', sans-serif;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========================
+   Reset & Base
+   ======================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+button { cursor: pointer; border: none; background: none; font-family: inherit; }
+input, select { font-family: inherit; }
+a { text-decoration: none; color: inherit; }
+
+/* ========================
+   Animated Background Orbs
+   ======================== */
+.bg-orbs {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+}
+.orb {
+  position: absolute; border-radius: 50%;
+  filter: blur(80px); opacity: 0.35; animation: drift 12s ease-in-out infinite alternate;
+}
+.orb-1 {
+  width: 500px; height: 500px; background: radial-gradient(circle, #3b82f6, transparent 70%);
+  top: -150px; left: -100px; animation-delay: 0s;
+}
+.orb-2 {
+  width: 400px; height: 400px; background: radial-gradient(circle, #a855f7, transparent 70%);
+  bottom: -100px; right: -80px; animation-delay: -4s;
+}
+.orb-3 {
+  width: 300px; height: 300px; background: radial-gradient(circle, #22c55e, transparent 70%);
+  top: 50%; left: 50%; transform: translate(-50%, -50%); animation-delay: -8s; opacity: 0.18;
+}
+@keyframes drift {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(30px, -30px) scale(1.08); }
+}
+.orb-1 { animation-name: drift; }
+.orb-2 { animation-name: drift2; }
+@keyframes drift2 {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(-25px, 25px) scale(1.05); }
+}
+
+/* ========================
+   Layout
+   ======================== */
+.app-wrapper {
+  display: flex;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+/* ========================
+   Sidebar
+   ======================== */
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--bg-sidebar);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+  transition: transform var(--transition);
+}
+
+.sidebar-header { margin-bottom: 32px; padding: 0 8px; }
+
+.logo {
+  display: flex; align-items: center; gap: 12px;
+}
+.logo-img-wrapper {
+  width: 40px; height: 40px; border-radius: 12px; overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  flex-shrink: 0; background: white;
+}
+.logo-img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.logo-text {
+  font-size: 20px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px;
+  background: var(--gradient-balance); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sidebar-nav {
+  display: flex; flex-direction: column; gap: 6px; flex: 1;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-radius: var(--radius-sm);
+  color: var(--text-secondary); font-size: 14px; font-weight: 500;
+  transition: all var(--transition); width: 100%; text-align: left;
+}
+.nav-item:hover {
+  background: var(--bg-card-hover); color: var(--text-primary);
+}
+.nav-item.active {
+  background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(168,85,247,0.2));
+  color: var(--text-primary);
+  border: 1px solid rgba(59,130,246,0.3);
+}
+.nav-icon { font-size: 18px; }
+
+.sidebar-footer {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.btn-clear-all {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--text-muted); font-size: 13px; padding: 10px 16px; border-radius: var(--radius-sm);
+  transition: all var(--transition); width: 100%;
+}
+.btn-clear-all:hover { color: var(--accent-red); background: rgba(244,63,94,0.08); }
+
+/* ========================
+   Main Content
+   ======================== */
+.main-content {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ========================
+   Top Bar
+   ======================== */
+.top-bar {
+  display: flex; align-items: center; gap: 16px;
+  padding: 20px 32px;
+  background: rgba(10, 13, 20, 0.6);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 50;
+}
+
+.menu-toggle {
+  display: none; color: var(--text-primary); font-size: 20px;
+  padding: 8px; border-radius: 8px; transition: background var(--transition);
+}
+.menu-toggle:hover { background: var(--bg-card-hover); }
+
+.top-bar-title {
+  font-size: 18px; font-weight: 600; color: var(--text-primary); flex: 1;
+}
+
+.top-bar-right { display: flex; align-items: center; gap: 16px; }
+
+.current-date { color: var(--text-secondary); font-size: 13px; }
+
+.btn-add-primary {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--gradient-balance); color: white;
+  padding: 10px 20px; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 600;
+  transition: all var(--transition);
+  box-shadow: 0 4px 20px rgba(59,130,246,0.35);
+}
+.btn-add-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(59,130,246,0.5);
+}
+.btn-add-primary span { font-size: 18px; line-height: 1; }
+
+/* ========================
+   Views
+   ======================== */
+.view {
+  display: none; padding: 32px; flex-direction: column; gap: 24px;
+}
+.view.active { display: flex; }
+
+/* ========================
+   Summary Cards
+   ======================== */
+.summary-cards {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 20px;
+}
+
+.card {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  position: relative; overflow: hidden;
+  transition: all var(--transition);
+}
+.card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: var(--gradient-card);
+  pointer-events: none;
+}
+.card:hover { transform: translateY(-3px); box-shadow: var(--shadow-card); }
+
+.card-balance {
+  background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(168,85,247,0.12));
+  border-color: rgba(59,130,246,0.3);
+  box-shadow: var(--shadow-glow-green);
+}
+.card-income {
+  background: linear-gradient(135deg, rgba(34,197,94,0.12), rgba(34,197,94,0.04));
+  border-color: rgba(34,197,94,0.25);
+}
+.card-expense {
+  background: linear-gradient(135deg, rgba(244,63,94,0.12), rgba(244,63,94,0.04));
+  border-color: rgba(244,63,94,0.25);
+}
+
+.card-icon {
+  font-size: 20px; font-weight: 700; margin-bottom: 8px;
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.card-income .card-icon {
+  background: rgba(34,197,94,0.2); color: var(--accent-green);
+}
+.card-expense .card-icon {
+  background: rgba(244,63,94,0.2); color: var(--accent-red);
+}
+
+.card-label {
+  font-size: 13px; color: var(--text-secondary); font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px;
+}
+.card-amount {
+  font-size: 30px; font-weight: 700; color: var(--text-primary);
+}
+.card-balance .card-amount { font-size: 38px; }
+.card-income .card-amount { color: var(--accent-green); }
+.card-expense .card-amount { color: var(--accent-red); }
+.card-sub { font-size: 13px; color: var(--text-secondary); margin-top: 6px; }
+
+/* ========================
+   Section Cards
+   ======================== */
+.section-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+}
+
+.section-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;
+}
+.section-title {
+  font-size: 16px; font-weight: 600; color: var(--text-primary);
+}
+.link-btn {
+  font-size: 13px; color: var(--accent-blue); font-weight: 500;
+  transition: color var(--transition);
+}
+.link-btn:hover { color: var(--accent-purple); }
+
+/* ========================
+   Expense Ratio Bar
+   ======================== */
+.expense-ratio-bar {
+  height: 12px; background: rgba(34,197,94,0.15);
+  border-radius: 100px; overflow: hidden; margin: 0 0 10px;
+  border: 1px solid rgba(34,197,94,0.2);
+}
+.ratio-fill {
+  height: 100%; background: var(--gradient-expense);
+  border-radius: 100px; transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 0%;
+}
+.ratio-labels {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--text-secondary);
+}
+
+/* ========================
+   Transaction List
+   ======================== */
+.transaction-list { display: flex; flex-direction: column; gap: 10px; }
+
+.transaction-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; border-radius: var(--radius-sm);
+  background: var(--bg-card); border: 1px solid var(--border);
+  transition: all var(--transition); cursor: default;
+  animation: slideIn 0.3s ease-out;
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.transaction-item:hover { background: var(--bg-card-hover); border-color: rgba(255,255,255,0.12); }
+
+.tx-emoji {
+  font-size: 24px; width: 44px; height: 44px;
+  background: rgba(255,255,255,0.06); border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.tx-info { flex: 1; min-width: 0; }
+.tx-desc { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tx-meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.tx-amount {
+  font-size: 16px; font-weight: 700; flex-shrink: 0;
+}
+.tx-amount.income { color: var(--accent-green); }
+.tx-amount.expense { color: var(--accent-red); }
+
+.tx-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.tx-btn {
+  width: 30px; height: 30px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; transition: all var(--transition); opacity: 0;
+}
+.transaction-item:hover .tx-btn { opacity: 1; }
+.tx-btn-edit { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+.tx-btn-edit:hover { background: rgba(59,130,246,0.3); }
+.tx-btn-delete { background: rgba(244,63,94,0.15); color: var(--accent-red); }
+.tx-btn-delete:hover { background: rgba(244,63,94,0.3); }
+
+/* ========================
+   Empty State
+   ======================== */
+.empty-state {
+  text-align: center; padding: 48px 24px; color: var(--text-muted);
+}
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; line-height: 1.7; }
+
+/* ========================
+   Filter Group
+   ======================== */
+.filter-group { display: flex; gap: 10px; }
+.filter-select {
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text-primary); border-radius: var(--radius-sm);
+  padding: 8px 14px; font-size: 13px;
+  transition: border-color var(--transition); cursor: pointer;
+}
+.filter-select:focus { outline: none; border-color: var(--border-focus); }
+.filter-select option { background: #1e293b; }
+
+/* ========================
+   Analytics / Category Breakdown
+   ======================== */
+.category-breakdown { display: flex; flex-direction: column; gap: 14px; }
+
+.chart-container {
+  width: 100%;
+  min-height: 250px;
+  position: relative;
+  margin-top: 20px;
+}
+
+.cat-item { display: flex; align-items: center; gap: 14px; }
+.cat-emoji { font-size: 20px; width: 36px; text-align: center; }
+.cat-info { flex: 1; }
+.cat-name { font-size: 13px; font-weight: 500; margin-bottom: 5px; }
+.cat-bar-track {
+  height: 6px; background: rgba(255,255,255,0.06);
+  border-radius: 100px; overflow: hidden;
+}
+.cat-bar-fill {
+  height: 100%; border-radius: 100px;
+  transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cat-amount { font-size: 13px; font-weight: 600; min-width: 90px; text-align: right; }
+
+/* ========================
+   Modal
+   ======================== */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--transition);
+  padding: 16px;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+
+.modal {
+  background: var(--bg-modal);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  width: 100%; max-width: 460px;
+  transform: translateY(20px) scale(0.97);
+  transition: transform var(--transition);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+}
+.modal-overlay.open .modal { transform: translateY(0) scale(1); }
+.modal-sm { max-width: 360px; }
+
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;
+}
+.modal-title { font-size: 18px; font-weight: 700; }
+.modal-close {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--bg-card); color: var(--text-secondary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; transition: all var(--transition);
+}
+.modal-close:hover { background: var(--accent-red); color: white; }
+
+/* Type Toggle */
+.type-toggle {
+  display: flex; gap: 8px; margin-bottom: 24px;
+  background: var(--bg-input); border-radius: var(--radius-sm); padding: 4px;
+}
+.type-btn {
+  flex: 1; padding: 10px; border-radius: 8px;
+  font-size: 14px; font-weight: 600; color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: all var(--transition);
+}
+.type-btn:hover { color: var(--text-primary); }
+.type-btn.active[data-type="income"] {
+  background: rgba(34,197,94,0.2); color: var(--accent-green);
+  box-shadow: 0 0 16px rgba(34,197,94,0.2);
+}
+.type-btn.active[data-type="expense"] {
+  background: rgba(244,63,94,0.2); color: var(--accent-red);
+  box-shadow: 0 0 16px rgba(244,63,94,0.2);
+}
+
+/* Form */
+.form-group { margin-bottom: 18px; }
+.form-group label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 500; }
+.form-input {
+  width: 100%; background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text-primary); border-radius: var(--radius-sm); padding: 12px 16px;
+  font-size: 15px; transition: border-color var(--transition);
+}
+.form-input:focus { outline: none; border-color: var(--border-focus); }
+.form-input::placeholder { color: var(--text-muted); }
+.form-input option { background: #1e293b; }
+
+.btn-submit {
+  width: 100%; padding: 14px; border-radius: var(--radius-sm);
+  font-size: 15px; font-weight: 700; color: white;
+  background: var(--gradient-balance);
+  transition: all var(--transition); margin-top: 8px;
+  box-shadow: 0 4px 20px rgba(59,130,246,0.3);
+}
+.btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(59,130,246,0.5); }
+
+/* Confirm Modal */
+.confirm-text { font-size: 15px; color: var(--text-secondary); margin-bottom: 24px; }
+.confirm-actions { display: flex; gap: 12px; }
+.btn-cancel {
+  flex: 1; padding: 12px; border-radius: var(--radius-sm);
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text-primary); font-size: 14px; font-weight: 600;
+  transition: all var(--transition);
+}
+.btn-cancel:hover { background: var(--bg-card-hover); }
+.btn-danger {
+  flex: 1; padding: 12px; border-radius: var(--radius-sm);
+  background: var(--gradient-expense); color: white; font-size: 14px; font-weight: 600;
+  transition: all var(--transition);
+}
+.btn-danger:hover { opacity: 0.9; transform: translateY(-1px); }
+
+/* ========================
+   Toast
+   ======================== */
+.toast {
+  position: fixed; bottom: 32px; right: 32px; z-index: 300;
+  background: rgba(30, 41, 59, 0.95); border: 1px solid var(--border);
+  backdrop-filter: blur(12px); padding: 14px 20px; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 500; color: var(--text-primary);
+  transform: translateY(20px); opacity: 0; pointer-events: none;
+  transition: all var(--transition); box-shadow: var(--shadow-card);
+  max-width: 320px;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { border-left: 3px solid var(--accent-green); }
+.toast.error { border-left: 3px solid var(--accent-red); }
+
+/* ========================
+   Responsive
+   ======================== */
+@media (max-width: 900px) {
+  :root { --sidebar-width: 0px; }
+
+  .sidebar {
+    transform: translateX(-100%);
+    width: 240px;
+    box-shadow: 8px 0 32px rgba(0,0,0,0.5);
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    width: 240px;
+  }
+
+  .main-content { margin-left: 0; }
+  .menu-toggle { display: flex; }
+
+  .summary-cards { grid-template-columns: 1fr 1fr; }
+  .card-balance { grid-column: 1 / -1; }
+  .view { padding: 20px; gap: 16px; }
+  .top-bar { padding: 16px 20px; }
+  .current-date { display: none; }
+}
+
+@media (max-width: 520px) {
+  .summary-cards { grid-template-columns: 1fr; }
+  .btn-add-primary span:last-child { display: none; }
+  .filter-group { flex-direction: column; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 100px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ========================
+   Loading Overlay
+   ======================== */
+.loading-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(10, 13, 20, 0.85); backdrop-filter: blur(12px);
+  display: none; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+  transition: opacity var(--transition);
+}
+.loading-overlay.active { display: flex; }
+
+.loading-spinner {
+  width: 48px; height: 48px; border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.1);
+  border-top-color: var(--accent-blue);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-text { color: var(--text-secondary); font-size: 14px; }
+
+/* ========================
+   Sync Badge
+   ======================== */
+.sync-badge {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 100px;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  margin-top: 12px; font-size: 11px; font-weight: 500;
+  transition: all var(--transition);
+}
+.sync-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted);
+  transition: background var(--transition);
+}
+.sync-badge.online  .sync-dot { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
+.sync-badge.offline .sync-dot { background: var(--text-muted); }
+.sync-badge.syncing .sync-dot { background: var(--accent-blue); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.sync-badge.online  { border-color: rgba(34,197,94,0.25); }
+.sync-badge.syncing { border-color: rgba(59,130,246,0.25); }
+
+.sync-label { color: var(--text-secondary); }
+
+/* ========================
+   Sync Button
+   ======================== */
+.btn-sync {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--text-secondary); font-size: 13px;
+  padding: 10px 16px; border-radius: var(--radius-sm);
+  transition: all var(--transition); width: 100%; margin-bottom: 4px;
+}
+.btn-sync:hover { color: var(--accent-blue); background: rgba(59,130,246,0.08); }
+.sync-icon { display: inline-block; transition: transform 0.5s; }
+.btn-sync:hover .sync-icon { transform: rotate(180deg); }
+
+/* ========================
+   Settings Page
+   ======================== */
+.settings-card { max-width: 620px; }
+
+.settings-desc {
+  color: var(--text-secondary); font-size: 14px;
+  margin-bottom: 28px; line-height: 1.7;
+}
+
+.steps { display: flex; flex-direction: column; gap: 16px; }
+
+.step {
+  display: flex; gap: 16px; align-items: flex-start;
+  padding: 16px; border-radius: var(--radius-sm);
+  background: var(--bg-card); border: 1px solid var(--border);
+}
+.step-num {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  background: var(--gradient-balance); color: white;
+  font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.step-body { flex: 1; }
+.step-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+.step-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+.step-link {
+  font-size: 13px; color: var(--accent-blue); font-weight: 500;
+  transition: color var(--transition); display: inline-block; margin-top: 4px;
+}
+.step-link:hover { color: var(--accent-purple); }
+.step-desc code {
+  background: rgba(255,255,255,0.08); padding: 1px 6px; border-radius: 4px;
+  font-family: monospace; font-size: 12px; color: var(--accent-green);
+}
+
+.settings-actions {
+  display: flex; gap: 12px; margin-top: 8px;
+}
+.btn-test-api {
+  flex: 1; padding: 12px; border-radius: var(--radius-sm);
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text-primary); font-size: 14px; font-weight: 600;
+  transition: all var(--transition);
+}
+.btn-test-api:hover { background: var(--bg-card-hover); border-color: var(--accent-blue); }
+
+.btn-save-api {
+  flex: 1; padding: 12px; border-radius: var(--radius-sm);
+  background: var(--gradient-balance); color: white;
+  font-size: 14px; font-weight: 700;
+  transition: all var(--transition);
+  box-shadow: 0 4px 16px rgba(59,130,246,0.3);
+}
+.btn-save-api:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59,130,246,0.5); }
+
+.api-status {
+  margin-top: 16px; padding: 12px 16px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500; display: none;
+  animation: slideIn 0.3s ease-out;
+}
+.api-status.testing { display: block; color: var(--accent-blue); background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); }
+.api-status.success { display: block; color: var(--accent-green); background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); }
+.api-status.error   { display: block; color: var(--accent-red);   background: rgba(244,63,94,0.1);  border: 1px solid rgba(244,63,94,0.2); }
+
+/* ========================
+   Scan Slip
+   ======================== */
+.scan-section {
+  padding: 16px; margin-bottom: 20px;
+  background: rgba(59, 130, 246, 0.05); border: 1px dashed rgba(59, 130, 246, 0.3);
+  border-radius: var(--radius-sm); text-align: center;
+}
+.btn-scan {
+  background: var(--bg-card); border: 1px solid var(--border);
+  color: var(--accent-blue); padding: 10px 20px; border-radius: 100px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: all var(--transition); display: flex; align-items: center; gap: 8px; margin: 0 auto;
+}
+.btn-scan:hover { background: rgba(59,130,246,0.1); border-color: var(--accent-blue); transform: scale(1.02); }
+
+.scan-progress {
+  display: none; margin-top: 12px; flex-direction: column; align-items: center; gap: 8px;
+}
+.scan-progress.active { display: flex; }
+.progress-bar {
+  width: 100%; height: 6px; background: rgba(255,255,255,0.05); border-radius: 100px; overflow: hidden;
+}
+.progress-bar::after {
+  content: ''; display: block; height: 100%; width: var(--progress, 0%);
+  background: var(--gradient-balance); transition: width 0.3s;
+}
+.progress-text { font-size: 12px; color: var(--text-secondary); }
+
+
+/* ========================
+   Checkbox & Inline Forms
+   ======================== */
+.form-group-inline {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+}
+.checkbox-container {
+  display: flex; align-items: center; gap: 10px; cursor: pointer;
+  font-size: 14px; color: var(--text-secondary); user-select: none;
+}
+.checkbox-container input {
+  width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-blue);
+}
+.checkbox-label { transition: color var(--transition); }
+.checkbox-container:hover .checkbox-label { color: var(--text-primary); }
+
+/* ========================
+   Settings & Images
+   ======================== */
+.settings-btn {
+  background: transparent; border: none; cursor: pointer;
+  font-size: 18px; color: var(--text-secondary); transition: transform var(--transition);
+  margin-left: 8px;
+}
+.settings-btn:hover { transform: rotate(45deg); }
+
+.settings-modal {
+  max-width: 400px;
+}
+
+.image-preview-container {
+  margin-top: 16px; position: relative; display: inline-block;
+  border-radius: var(--radius-sm); overflow: hidden;
+  border: 1px solid var(--border);
+}
+.image-preview-container img {
+  display: block; max-width: 100%; max-height: 200px; object-fit: contain;
+}
+.btn-remove-image {
+  position: absolute; top: 4px; right: 4px;
+  background: rgba(0,0,0,0.6); color: white; border: none;
+  border-radius: 50%; width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; cursor: pointer; transition: background 0.2s;
+}
+.btn-remove-image:hover { background: rgba(244,63,94,0.9); }
+
+.tx-image-link {
+  display: inline-block; margin-left: 8px; text-decoration: none;
+  font-size: 14px; opacity: 0.8; transition: opacity 0.2s;
+}
+.tx-image-link:hover { opacity: 1; }
+    </style>
+  </head>
+  <body>
+    <!-- Animated Background -->
+    <div class="bg-orbs" aria-hidden="true">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Global Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+      <div class="loading-spinner"></div>
+      <p class="loading-text" id="loading-text">กำลังโหลด...</p>
+    </div>
+
+    <div class="app-wrapper">
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div class="logo">
+            <div class="logo-img-wrapper" id="logo-wrapper">
+              <span id="logo-fallback" style="font-size: 24px;">💸</span>
+            </div>
+            <span class="logo-text">MoneyFlow</span>
+          </div>
+          <div class="sync-badge" id="sync-badge" title="สถานะซิงค์">
+            <span class="sync-dot"></span>
+            <span class="sync-label" id="sync-label">ออฟไลน์</span>
+          </div>
+          <button class="settings-btn" id="btn-open-settings" title="ตั้งค่าระบบ">⚙️</button>
+        </div>
+
+        <nav class="sidebar-nav">
+          <button class="nav-item active" data-view="dashboard" id="nav-dashboard">
+            <span class="nav-icon">📊</span>
+            <span>ภาพรวม</span>
+          </button>
+          <button class="nav-item" data-view="transactions" id="nav-transactions">
+            <span class="nav-icon">📋</span>
+            <span>รายการทั้งหมด</span>
+          </button>
+          <button class="nav-item" data-view="analytics" id="nav-analytics">
+            <span class="nav-icon">📊</span>
+            <span>หมวดหมู่</span>
+          </button>
+          <button class="nav-item" data-view="trends" id="nav-trends">
+            <span class="nav-icon">📈</span>
+            <span>แนวโน้ม</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button class="btn-sync" id="btn-sync" title="ซิงค์ข้อมูล">
+            <span class="sync-icon">🔄</span> ซิงค์ข้อมูล
+          </button>
+          <button class="btn-clear-all" id="btn-clear-all">
+            <span>🗑️</span> ล้างข้อมูล
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Header -->
+        <header class="top-bar">
+          <button class="menu-toggle" id="menu-toggle" aria-label="toggle menu">☰</button>
+          <div class="top-bar-title" id="page-title">ภาพรวม</div>
+          <div class="top-bar-right">
+            <div class="current-date" id="current-date"></div>
+            <button class="btn-add-primary" id="btn-open-modal">
+              <span>+</span> เพิ่มรายการ
+            </button>
+          </div>
+        </header>
+
+        <!-- Dashboard View -->
+        <section class="view active" id="view-dashboard">
+          <div class="summary-cards">
+            <div class="card card-balance">
+              <div class="card-label">ยอดคงเหลือ</div>
+              <div class="card-amount" id="total-balance">฿0.00</div>
+              <div class="card-sub" id="balance-trend"></div>
+            </div>
+            <div class="card card-income">
+              <div class="card-icon">↑</div>
+              <div class="card-label">รายรับ</div>
+              <div class="card-amount" id="total-income">฿0.00</div>
+            </div>
+            <div class="card card-expense">
+              <div class="card-icon">↓</div>
+              <div class="card-label">รายจ่าย</div>
+              <div class="card-amount" id="total-expense">฿0.00</div>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <h2 class="section-title">สัดส่วนรายจ่าย</h2>
+            <div class="expense-ratio-bar">
+              <div class="ratio-fill" id="ratio-fill"></div>
+            </div>
+            <div class="ratio-labels">
+              <span id="ratio-income-label">รายรับ 0%</span>
+              <span id="ratio-expense-label">รายจ่าย 0%</span>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-header">
+              <h2 class="section-title">รายการล่าสุด</h2>
+              <button class="link-btn" data-view="transactions" id="see-all-btn">ดูทั้งหมด →</button>
+            </div>
+            <div class="transaction-list" id="recent-list">
+              <div class="empty-state" id="empty-recent">
+                <div class="empty-icon">💰</div>
+                <p>ยังไม่มีรายการ<br/>กด "เพิ่มรายการ" เพื่อเริ่มต้น</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- All Transactions View -->
+        <section class="view" id="view-transactions">
+          <div class="section-card">
+            <div class="section-header">
+              <h2 class="section-title">รายการทั้งหมด</h2>
+              <div class="filter-group">
+                <select class="filter-select" id="filter-type">
+                  <option value="all">ทุกประเภท</option>
+                  <option value="income">รายรับ</option>
+                  <option value="expense">รายจ่าย</option>
+                </select>
+                <select class="filter-select" id="filter-category">
+                  <option value="all">ทุกหมวดหมู่</option>
+                </select>
+              </div>
+            </div>
+            <div class="transaction-list" id="all-list">
+              <div class="empty-state" id="empty-all">
+                <div class="empty-icon">📋</div>
+                <p>ไม่มีรายการที่ตรงกับเงื่อนไข</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Trends View -->
+        <section class="view" id="view-trends">
+          <div class="section-card">
+            <h2 class="section-title">แนวโน้มรายวัน (30 วันล่าสุด)</h2>
+            <div class="chart-container">
+              <canvas id="dailyTrendChart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- Analytics View -->
+        <section class="view" id="view-analytics">
+          <div class="section-card">
+            <h2 class="section-title">รายจ่ายแยกตามหมวดหมู่</h2>
+            <div class="category-breakdown" id="category-breakdown">
+              <div class="empty-state"><div class="empty-icon">📊</div><p>ยังไม่มีข้อมูล</p></div>
+            </div>
+          </div>
+          <div class="section-card">
+            <h2 class="section-title">รายรับแยกตามหมวดหมู่</h2>
+            <div class="category-breakdown" id="income-breakdown">
+              <div class="empty-state"><div class="empty-icon">💵</div><p>ยังไม่มีข้อมูล</p></div>
+            </div>
+          </div>
+        </section>
+
+
+      </main>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal">
+        <div class="modal-header">
+          <h2 class="modal-title" id="modal-title">เพิ่มรายการใหม่</h2>
+          <button class="modal-close" id="modal-close">✕</button>
+        </div>
+        <div class="scan-section">
+          <button type="button" class="btn-scan" id="btn-scan">
+            <span class="scan-icon">📸</span> สแกนสลิป / แนบรูปภาพ
+          </button>
+          <input type="file" id="input-slip" accept="image/*" style="display:none;" />
+          <div id="scan-progress" class="scan-progress">
+            <div class="progress-bar"></div>
+            <span class="progress-text">กำลังสแกน...</span>
+          </div>
+          <div id="image-preview-container" class="image-preview-container" style="display:none;">
+            <img id="image-preview" src="" alt="Preview" />
+            <button type="button" id="btn-remove-image" class="btn-remove-image">✕</button>
+          </div>
+        </div>
+        <div class="type-toggle">
+          <button class="type-btn active" id="type-income" data-type="income"><span>↑</span> รายรับ</button>
+          <button class="type-btn" id="type-expense" data-type="expense"><span>↓</span> รายจ่าย</button>
+        </div>
+        <form id="transaction-form" autocomplete="off">
+          <input type="hidden" id="edit-id" value="" />
+          <div class="form-group">
+            <label for="input-amount">จำนวนเงิน (฿)</label>
+            <input type="number" id="input-amount" class="form-input" placeholder="0.00" min="0" step="0.01" required />
+          </div>
+          <div class="form-group">
+            <label for="input-description">รายละเอียด</label>
+            <input type="text" id="input-description" class="form-input" placeholder="เช่น ค่าอาหารกลางวัน" required />
+          </div>
+          <div class="form-group">
+            <label for="input-category">หมวดหมู่</label>
+            <select id="input-category" class="form-input" required></select>
+          </div>
+          <div class="form-group">
+            <label for="input-date">วันและเวลา</label>
+            <input type="datetime-local" id="input-date" class="form-input" required />
+          </div>
+          <div class="form-group-inline">
+            <label class="checkbox-container">
+              <input type="checkbox" id="check-continue" />
+              <span class="checkbox-label">บันทึกและเพิ่มรายการต่อไป</span>
+            </label>
+          </div>
+          <button type="submit" class="btn-submit" id="btn-submit">
+            <span id="submit-label">เพิ่มรายการ</span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Delete Confirm Modal -->
+    <div class="modal-overlay" id="delete-overlay" role="dialog" aria-modal="true">
+      <div class="modal modal-sm">
+        <div class="modal-header">
+          <h2 class="modal-title">ยืนยันการลบ</h2>
+          <button class="modal-close" id="delete-cancel-x">✕</button>
+        </div>
+        <p class="confirm-text">คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้?</p>
+        <div class="confirm-actions">
+          <button class="btn-cancel" id="delete-cancel">ยกเลิก</button>
+          <button class="btn-danger" id="delete-confirm">ลบ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+      <div class="modal settings-modal">
+        <div class="modal-header">
+          <h2 class="modal-title" id="settings-modal-title">ตั้งค่าระบบ</h2>
+          <button class="modal-close" id="settings-modal-close">✕</button>
+        </div>
+        <div class="settings-body" style="padding: 24px;">
+          <div class="form-group">
+            <label for="input-cutoff-day">วันที่ตัดรอบบิลรายเดือน (1-31)</label>
+            <input type="number" id="input-cutoff-day" class="form-input" min="1" max="31" value="1" />
+            <p class="form-help" style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">ตัวอย่าง: หากตั้งเป็นวันที่ 25 รอบบิลปัจจุบันจะนับตั้งแต่วันที่ 25 ของเดือนก่อน จนถึงวันที่ 24 ของเดือนนี้</p>
+          </div>
+          <button class="btn-save btn-primary" id="btn-save-settings" style="width:100%; margin-top: 16px;">บันทึกการตั้งค่า</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script>
+// ========================
+// Data & Configuration
+// ========================
+const CATEGORIES = {
+  income: [
+    { id: 'salary',     label: 'เงินเดือน',         emoji: '💼' },
+    { id: 'freelance',  label: 'ฟรีแลนซ์',          emoji: '💻' },
+    { id: 'investment', label: 'การลงทุน',           emoji: '📈' },
+    { id: 'gift',       label: 'ของขวัญ/โบนัส',     emoji: '🎁' },
+    { id: 'other_in',   label: 'รายรับอื่นๆ',       emoji: '💰' },
+  ],
+  expense: [
+    { id: 'food',          label: 'อาหาร',              emoji: '🍜' },
+    { id: 'transport',     label: 'เดินทาง',            emoji: '🚗' },
+    { id: 'shopping',      label: 'ช้อปปิ้ง',           emoji: '🛍️' },
+    { id: 'utilities',     label: 'ค่าสาธารณูปโภค',    emoji: '💡' },
+    { id: 'health',        label: 'สุขภาพ',             emoji: '🏥' },
+    { id: 'entertainment', label: 'บันเทิง',            emoji: '🎮' },
+    { id: 'education',     label: 'การศึกษา',           emoji: '📚' },
+    { id: 'rent',          label: 'ค่าเช่า/บ้าน',      emoji: '🏠' },
+    { id: 'other_ex',      label: 'รายจ่ายอื่นๆ',      emoji: '📦' },
+  ],
+};
+
+const CAT_COLORS = {
+  income:  ['#22c55e','#16a34a','#86efac','#4ade80','#bbf7d0'],
+  expense: ['#f43f5e','#e11d48','#fb7185','#f97316','#fb923c','#fbbf24','#a855f7','#8b5cf6','#6366f1'],
+};
+
+// ========================
+// State
+// ========================
+let transactions = JSON.parse(localStorage.getItem('mf_cache_tx') || '[]');
+let currentType  = 'income';
+let pendingDeleteId = null;
+let editingId    = null;
+let currentView  = 'dashboard';
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyNgQU1KtcgV2wVWcGslNGkq6_o3IjjzSCs9Jy0SSAsOxeP6xqEoXldWf4EJD5GdB_k/exec';
+const VISION_API_KEY  = 'AIzaSyCAvi-wgDdnF6vOJXnnDbwXfWFrYwaKIpE';
+let apiUrl = DEFAULT_API_URL;
+let cutoffDay = parseInt(localStorage.getItem('mf_cutoff_day')) || 1;
+let pendingImageData = null;
+let pendingImageMime = null;
+let pendingImageName = null;
+let dailyChartInstance = null;
+
+function saveLocalCache() {
+  localStorage.setItem('mf_cache_tx', JSON.stringify(transactions));
+}
+
+// ========================
+// API Layer
+// ========================
+async function apiFetch(action, transaction = null) {
+  if (!apiUrl) throw new Error('ยังไม่ได้ตั้งค่า Google Apps Script URL');
+
+  if (action === 'getAll') {
+    const res = await fetch(apiUrl, { method: 'GET' });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'เกิดข้อผิดพลาด');
+    return data.data;
+  } else {
+    // POST with text/plain to avoid CORS preflight
+    let payload = { action };
+    if (action === 'uploadImage') {
+      payload = { ...payload, ...transaction };
+    } else {
+      payload.transaction = transaction;
+    }
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'เกิดข้อผิดพลาด');
+    return data.data;
+  }
+}
+
+// ========================
+// Loading Overlay
+// ========================
+function showLoading(msg = 'กำลังโหลด...') {
+  document.getElementById('loading-text').textContent = msg;
+  document.getElementById('loading-overlay').classList.add('active');
+}
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.remove('active');
+}
+
+// ========================
+// Sync Badge
+// ========================
+function setSyncStatus(status) {
+  // status: 'online' | 'offline' | 'syncing'
+  const badge = document.getElementById('sync-badge');
+  const label = document.getElementById('sync-label');
+  badge.className = 'sync-badge ' + status;
+  const labels = { online: 'ออนไลน์', offline: 'ออฟไลน์', syncing: 'กำลังซิงค์...' };
+  label.textContent = labels[status] || status;
+}
+
+// ========================
+// Load transactions from API
+// ========================
+async function loadTransactions() {
+  if (!apiUrl) { setSyncStatus('offline'); return; }
+  
+  // 1. Render from cache immediately if available
+  if (transactions.length > 0) {
+    renderAll();
+  }
+
+  try {
+    setSyncStatus('syncing');
+    // Don't show full loading overlay if we already have data (silent sync)
+    if (transactions.length === 0) showLoading('กำลังโหลดข้อมูล...');
+    
+    const freshData = await apiFetch('getAll');
+    transactions = freshData;
+    saveLocalCache();
+    setSyncStatus('online');
+  } catch (err) {
+    console.error(err);
+    setSyncStatus('offline');
+    if (transactions.length === 0) showToast('⚠️ โหลดข้อมูลไม่สำเร็จ: ' + err.message, 'error');
+  } finally {
+    hideLoading();
+    renderAll();
+  }
+}
+
+// ========================
+// Utilities
+// ========================
+function formatCurrency(amount) {
+  return '฿' + Number(amount).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const datePart = d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+  const timePart = d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  return `${datePart} · ${timePart}`;
+}
+function getCategoryInfo(type, catId) {
+  return [...CATEGORIES.income, ...CATEGORIES.expense].find(c => c.id === catId) || { label: catId, emoji: '📌' };
+}
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.appendChild(document.createTextNode(str));
+  return d.innerHTML;
+}
+
+// ========================
+// Totals & Cycle Helper
+// ========================
+function isInCurrentCycle(dateStr) {
+  if (!dateStr) return false;
+  const txDate = new Date(dateStr);
+  if (isNaN(txDate.getTime())) return false;
+  
+  const now = new Date();
+  let startOfCycle = new Date(now.getFullYear(), now.getMonth(), cutoffDay);
+  if (now.getDate() < cutoffDay) {
+    startOfCycle.setMonth(startOfCycle.getMonth() - 1);
+  }
+  
+  let endOfCycle = new Date(startOfCycle);
+  endOfCycle.setMonth(endOfCycle.getMonth() + 1);
+  
+  return txDate >= startOfCycle && txDate < endOfCycle;
+}
+
+function getTotals() {
+  let income = 0, expense = 0;
+  transactions.forEach(t => {
+    if (isInCurrentCycle(t.date)) {
+      if (t.type === 'income') income += Number(t.amount);
+      else expense += Number(t.amount);
+    }
+  });
+  return { income, expense, balance: income - expense };
+}
+
+// ========================
+// Toast
+// ========================
+let toastTimer;
+function showToast(msg, type = 'success') {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = `toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.className = 'toast'; }, 3500);
+}
+
+// ========================
+// Navigation
+// ========================
+function setView(view) {
+  currentView = view;
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(`view-${view}`);
+  if (el) el.classList.add('active');
+  const navEl = document.getElementById(`nav-${view}`);
+  if (navEl) navEl.classList.add('active');
+  const titles = { dashboard: 'ภาพรวม', transactions: 'รายการทั้งหมด', analytics: 'วิเคราะห์ตามหมวดหมู่', trends: 'แนวโน้มรายวัน' };
+  document.getElementById('page-title').textContent = titles[view] || '';
+  renderAll();
+  if (window.innerWidth <= 900) document.getElementById('sidebar').classList.remove('open');
+}
+
+// ========================
+// Category Selects
+// ========================
+function populateCategorySelect(type) {
+  const select = document.getElementById('input-category');
+  select.innerHTML = '';
+  CATEGORIES[type].forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat.id;
+    opt.textContent = `${cat.emoji} ${cat.label}`;
+    select.appendChild(opt);
+  });
+}
+function populateFilterCategory() {
+  const select = document.getElementById('filter-category');
+  select.innerHTML = '<option value="all">ทุกหมวดหมู่</option>';
+  [...CATEGORIES.income, ...CATEGORIES.expense].forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat.id;
+    opt.textContent = `${cat.emoji} ${cat.label}`;
+    select.appendChild(opt);
+  });
+}
+
+// ========================
+// Render Dashboard
+// ========================
+function renderDashboard() {
+  const { income, expense, balance } = getTotals();
+  document.getElementById('total-balance').textContent = formatCurrency(balance);
+  document.getElementById('total-income').textContent  = formatCurrency(income);
+  document.getElementById('total-expense').textContent = formatCurrency(expense);
+
+  const total = income + expense;
+  const expenseRatio = total > 0 ? (expense / total) * 100 : 0;
+  document.getElementById('ratio-fill').style.width = expenseRatio + '%';
+  document.getElementById('ratio-income-label').textContent  = `รายรับ ${(100 - expenseRatio).toFixed(0)}%`;
+  document.getElementById('ratio-expense-label').textContent = `รายจ่าย ${expenseRatio.toFixed(0)}%`;
+
+  const balanceTrend = document.getElementById('balance-trend');
+  if (balance > 0) balanceTrend.textContent = '↑ คุณมีเงินเหลือ';
+  else if (balance < 0) balanceTrend.textContent = '↓ รายจ่ายเกินรายรับ';
+  else balanceTrend.textContent = 'รายรับเท่ากับรายจ่าย';
+
+  const recent = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+  renderTransactionList('recent-list', recent, 'empty-recent');
+}
+
+// ========================
+// Render Transaction List
+// ========================
+function renderTransactionList(listId, items, emptyId) {
+  const container = document.getElementById(listId);
+  container.innerHTML = '';
+  if (items.length === 0) {
+    const emptyTemplate = document.getElementById(emptyId);
+    if (emptyTemplate) container.appendChild(emptyTemplate.cloneNode(true));
+    return;
+  }
+  items.forEach(tx => {
+    const cat = getCategoryInfo(tx.type, tx.category);
+    const div = document.createElement('div');
+    div.className = 'transaction-item';
+    div.innerHTML = `
+      <div class="tx-emoji">${cat.emoji}</div>
+      <div class="tx-info">
+        <div class="tx-desc">
+          ${escapeHtml(tx.description)}
+          ${tx.imageUrl ? `<a href="${tx.imageUrl}" target="_blank" class="tx-image-link" title="ดูรูปภาพ">🖼️</a>` : ''}
+        </div>
+        <div class="tx-meta">${cat.label} · ${formatDate(tx.date)}</div>
+      </div>
+      <div class="tx-amount ${tx.type}">
+        ${tx.type === 'income' ? '+' : '-'}${formatCurrency(tx.amount)}
+      </div>
+      <div class="tx-actions">
+        <button class="tx-btn tx-btn-edit" data-id="${tx.id}" title="แก้ไข">✏️</button>
+        <button class="tx-btn tx-btn-delete" data-id="${tx.id}" title="ลบ">🗑️</button>
+      </div>`;
+    container.appendChild(div);
+  });
+  container.querySelectorAll('.tx-btn-edit').forEach(btn => btn.addEventListener('click', () => openEditModal(btn.dataset.id)));
+  container.querySelectorAll('.tx-btn-delete').forEach(btn => btn.addEventListener('click', () => openDeleteModal(btn.dataset.id)));
+}
+
+// ========================
+// Render All Transactions
+// ========================
+function renderAllTransactions() {
+  const filterType = document.getElementById('filter-type').value;
+  const filterCat  = document.getElementById('filter-category').value;
+  let filtered = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+  if (filterType !== 'all') filtered = filtered.filter(t => t.type === filterType);
+  if (filterCat  !== 'all') filtered = filtered.filter(t => t.category === filterCat);
+  renderTransactionList('all-list', filtered, 'empty-all');
+}
+
+// ========================
+// Render Analytics
+// ========================
+function renderAnalytics() {
+  renderCategoryBreakdown('expense', 'category-breakdown');
+  renderCategoryBreakdown('income', 'income-breakdown');
+}
+
+function renderDailyChart() {
+  const ctx = document.getElementById('dailyTrendChart');
+  if (!ctx) return;
+
+  const labels = [];
+  const incomeData = [];
+  const expenseData = [];
+  
+  const now = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    labels.push(d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
+    
+    const dayTx = transactions.filter(t => t.date.startsWith(dateStr));
+    const income = dayTx.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
+    const expense = dayTx.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
+    
+    incomeData.push(income);
+    expenseData.push(expense);
+  }
+
+  if (dailyChartInstance) { dailyChartInstance.destroy(); }
+
+  dailyChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'รายรับ', data: incomeData, backgroundColor: '#22c55e', borderRadius: 4 },
+        { label: 'รายจ่าย', data: expenseData, backgroundColor: '#f43f5e', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, labels: { color: '#94a3b8', font: { family: 'Inter' } } },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', callback: (val) => '฿' + val.toLocaleString() } }
+      }
+    }
+  });
+}
+function renderCategoryBreakdown(type, containerId) {
+  const container = document.getElementById(containerId);
+  const txList = transactions.filter(t => t.type === type && isInCurrentCycle(t.date));
+  if (txList.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">${type === 'expense' ? '📊' : '💵'}</div><p>ยังไม่มีข้อมูล</p></div>`;
+    return;
+  }
+  const totals = {};
+  txList.forEach(t => { totals[t.category] = (totals[t.category] || 0) + Number(t.amount); });
+  const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  const maxVal = sorted[0][1];
+  const colors = CAT_COLORS[type];
+  container.innerHTML = '';
+  sorted.forEach(([catId, amount], idx) => {
+    const cat = getCategoryInfo(type, catId);
+    const pct = ((amount / maxVal) * 100).toFixed(1);
+    const div = document.createElement('div');
+    div.className = 'cat-item';
+    div.innerHTML = `
+      <div class="cat-emoji">${cat.emoji}</div>
+      <div class="cat-info">
+        <div class="cat-name">${cat.label}</div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${pct}%;background:${colors[idx % colors.length]};"></div></div>
+      </div>
+      <div class="cat-amount" style="color:${colors[idx % colors.length]}">${formatCurrency(amount)}</div>`;
+    container.appendChild(div);
+  });
+}
+
+// ========================
+// Render All
+// ========================
+function renderAll() {
+  if (currentView === 'dashboard')     renderDashboard();
+  else if (currentView === 'transactions') renderAllTransactions();
+  else if (currentView === 'analytics')    renderAnalytics();
+  else if (currentView === 'trends')       renderDailyChart();
+}
+
+// ========================
+// Modal: Add/Edit
+// ========================
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modal-title').textContent  = 'เพิ่มรายการใหม่';
+  document.getElementById('submit-label').textContent = 'เพิ่มรายการ';
+  document.getElementById('transaction-form').reset();
+  document.getElementById('edit-id').value  = '';
+  
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  const localISOTime = (new Date(now - offset)).toISOString().slice(0, 16);
+  document.getElementById('input-date').value = localISOTime;
+  
+  clearPendingImage();
+  setTransactionType('income');
+  openModal('modal-overlay');
+}
+function openEditModal(id) {
+  const tx = transactions.find(t => t.id === id);
+  if (!tx) return;
+  editingId = id;
+  document.getElementById('modal-title').textContent  = 'แก้ไขรายการ';
+  document.getElementById('submit-label').textContent = 'บันทึกการแก้ไข';
+  document.getElementById('edit-id').value            = id;
+  document.getElementById('input-amount').value       = tx.amount;
+  document.getElementById('input-description').value  = tx.description;
+  document.getElementById('input-date').value         = tx.date;
+  clearPendingImage();
+  if (tx.imageUrl) {
+    const previewContainer = document.getElementById('image-preview-container');
+    const previewImg = document.getElementById('image-preview');
+    previewImg.src = tx.imageUrl;
+    previewContainer.style.display = 'block';
+  }
+  setTransactionType(tx.type);
+  setTimeout(() => { document.getElementById('input-category').value = tx.category; }, 0);
+  openModal('modal-overlay');
+}
+function setTransactionType(type) {
+  currentType = type;
+  document.getElementById('type-income').classList.toggle('active', type === 'income');
+  document.getElementById('type-expense').classList.toggle('active', type === 'expense');
+  populateCategorySelect(type);
+}
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ========================
+// Modal: Delete
+// ========================
+function openDeleteModal(id) {
+  pendingDeleteId = id;
+  openModal('delete-overlay');
+}
+
+// ========================
+// Form Submit
+// ========================
+async function handleFormSubmit(e) {
+  e.preventDefault();
+  const amount      = parseFloat(document.getElementById('input-amount').value);
+  const description = document.getElementById('input-description').value.trim();
+  const category    = document.getElementById('input-category').value;
+  const date        = document.getElementById('input-date').value;
+
+  if (!amount || amount <= 0 || !description || !category || !date) {
+    showToast('กรุณากรอกข้อมูลให้ครบถ้วน', 'error'); return;
+  }
+
+  const isContinue = document.getElementById('check-continue').checked;
+  const submitBtn = document.getElementById('btn-submit');
+  
+  submitBtn.disabled = true;
+  let uploadedUrl = null;
+
+  try {
+    if (pendingImageData) {
+      showLoading('กำลังอัปโหลดรูปภาพ...');
+      const res = await apiFetch('uploadImage', { 
+        base64Data: pendingImageData, 
+        filename: pendingImageName, 
+        mimeType: pendingImageMime 
+      });
+      uploadedUrl = res.url;
+    }
+
+    let tempTx;
+    if (editingId) {
+      const oldTx = transactions.find(t => t.id === editingId);
+      tempTx = { 
+        id: editingId, type: currentType, amount, description, category, date, 
+        createdAt: new Date().toISOString(),
+        imageUrl: uploadedUrl || (oldTx ? oldTx.imageUrl : '')
+      };
+      const idx = transactions.findIndex(t => t.id === editingId);
+      if (idx !== -1) transactions[idx] = tempTx;
+      showToast('✅ บันทึกการแก้ไขแล้ว (กำลังซิงค์...)');
+    } else {
+      tempTx = { 
+        id: generateId(), type: currentType, amount, description, category, date, 
+        createdAt: new Date().toISOString(),
+        imageUrl: uploadedUrl || ''
+      };
+      transactions.unshift(tempTx);
+      showToast('✅ บันทึกแล้ว (กำลังซิงค์...)');
+    }
+
+    if (!editingId && isContinue) {
+      document.getElementById('input-amount').value = '';
+      document.getElementById('input-description').value = '';
+      document.getElementById('input-amount').focus();
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000;
+      document.getElementById('input-date').value = (new Date(now - offset)).toISOString().slice(0, 16);
+      clearPendingImage();
+    } else {
+      closeModal('modal-overlay');
+    }
+
+    renderAll();
+    saveLocalCache();
+
+    setSyncStatus('syncing');
+    if (editingId) { await apiFetch('update', tempTx); } 
+    else { await apiFetch('add', tempTx); }
+    setSyncStatus('online');
+  } catch (err) {
+    showToast('❌ ข้อผิดพลาด: ' + err.message, 'error');
+    setSyncStatus('offline');
+    loadTransactions(); 
+  } finally {
+    submitBtn.disabled = false;
+    hideLoading();
+  }
+}
+
+// ========================
+// Current Date
+// ========================
+function updateCurrentDate() {
+  document.getElementById('current-date').textContent = new Date().toLocaleDateString('th-TH', {
+    weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
+  });
+}
+
+// ========================
+// Slip Scanning
+// ========================
+function clearPendingImage() {
+  pendingImageData = null; pendingImageMime = null; pendingImageName = null;
+  const previewContainer = document.getElementById('image-preview-container');
+  const previewImg = document.getElementById('image-preview');
+  previewImg.src = '';
+  previewContainer.style.display = 'none';
+  document.getElementById('input-slip').value = '';
+}
+
+async function handleSlipScan(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const progressEl = document.getElementById('scan-progress');
+  const barEl = progressEl.querySelector('.progress-bar');
+  const textEl = progressEl.querySelector('.progress-text');
+  
+  progressEl.classList.add('active');
+  textEl.textContent = 'กำลังเตรียมรูปภาพ...';
+  barEl.style.setProperty('--progress', '10%');
+
+  try {
+    const base64Data = await fileToBase64(file);
+    const mimeType = file.type || 'image/jpeg';
+    
+    pendingImageData = base64Data;
+    pendingImageMime = mimeType;
+    pendingImageName = file.name || 'image.jpg';
+    
+    const previewContainer = document.getElementById('image-preview-container');
+    const previewImg = document.getElementById('image-preview');
+    previewImg.src = `data:${mimeType};base64,${base64Data}`;
+    previewContainer.style.display = 'block';
+
+    textEl.textContent = 'Gemini AI กำลังวิเคราะห์สลิป...';
+    barEl.style.setProperty('--progress', '40%');
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${VISION_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: "Extract transaction details from this Thai bank slip image. Return ONLY JSON format: {\"amount\": 123.45, \"description\": \"Name of recipient\"}. If amount not found, return {\"amount\": null, \"description\": \"\"}. Focus on the total transfer amount." },
+            { inline_data: { mime_type: mimeType, data: base64Data } }
+          ]
+        }]
+      })
+    });
+
+    if (!response.ok) { throw new Error(`API Error ${response.status}`); }
+
+    const result = await response.json();
+    barEl.style.setProperty('--progress', '90%');
+    
+    let aiText = result.candidates[0].content.parts[0].text;
+    const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('AI format error');
+    
+    const data = JSON.parse(jsonMatch[0]);
+
+    if (data.amount) {
+      document.getElementById('input-amount').value = data.amount;
+      if (data.description) { document.getElementById('input-description').value = data.description; }
+      showToast('✅ สแกนสำเร็จ');
+    } else {
+      showToast('⚠️ AI ไม่พบยอดเงิน', 'error');
+    }
+
+    setTransactionType('expense');
+    barEl.style.setProperty('--progress', '100%');
+  } catch (err) {
+    showToast('⚠️ สแกนไม่ได้ (แนบรูปไว้ให้แล้ว)', 'error'); 
+  } finally {
+    setTimeout(() => progressEl.classList.remove('active'), 500);
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload  = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = error => reject(error);
+  });
+}
+
+// ========================
+// Init
+// ========================
+function init() {
+  updateCurrentDate();
+  populateCategorySelect('income');
+  populateFilterCategory();
+
+  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.view)));
+  document.getElementById('see-all-btn').addEventListener('click', () => setView('transactions'));
+  document.getElementById('menu-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
+  
+  document.getElementById('btn-open-modal').addEventListener('click', openAddModal);
+  document.getElementById('btn-sync').addEventListener('click', loadTransactions);
+  document.getElementById('type-income').addEventListener('click',  () => setTransactionType('income'));
+  document.getElementById('type-expense').addEventListener('click', () => setTransactionType('expense'));
+  document.getElementById('modal-close').addEventListener('click', () => closeModal('modal-overlay'));
+  document.getElementById('transaction-form').addEventListener('submit', handleFormSubmit);
+
+  document.getElementById('delete-confirm').addEventListener('click', async () => {
+    if (!pendingDeleteId) return;
+    const originalTx = [...transactions];
+    transactions = transactions.filter(t => t.id !== pendingDeleteId);
+    renderAll(); saveLocalCache(); closeModal('delete-overlay');
+    showToast('🗑️ ลบรายการแล้ว (กำลังซิงค์...)');
+    try {
+      setSyncStatus('syncing');
+      await apiFetch('delete', { id: pendingDeleteId });
+      setSyncStatus('online');
+    } catch (err) {
+      showToast('❌ ลบไม่สำเร็จ: ' + err.message, 'error');
+      transactions = originalTx; renderAll(); saveLocalCache();
+    }
+  });
+
+  document.getElementById('delete-cancel').addEventListener('click', () => closeModal('delete-overlay'));
+  document.getElementById('btn-clear-all').addEventListener('click', async () => {
+    if (transactions.length === 0) return;
+    if (!confirm('ล้างข้อมูลทั้งหมด?')) return;
+    try {
+      showLoading(); await apiFetch('clearAll'); transactions = []; renderAll();
+      showToast('🗑️ ล้างข้อมูลเรียบร้อย');
+    } catch (err) { showToast('❌ ' + err.message, 'error'); } finally { hideLoading(); }
+  });
+
+  document.getElementById('filter-type').addEventListener('change', renderAllTransactions);
+  document.getElementById('filter-category').addEventListener('change', renderAllTransactions);
+  document.getElementById('btn-remove-image').addEventListener('click', clearPendingImage);
+  document.getElementById('btn-open-settings').addEventListener('click', () => {
+    document.getElementById('input-cutoff-day').value = cutoffDay;
+    openModal('settings-modal-overlay');
+  });
+  document.getElementById('btn-save-settings').addEventListener('click', () => {
+    const day = parseInt(document.getElementById('input-cutoff-day').value);
+    if (day >= 1 && day <= 31) {
+      cutoffDay = day; localStorage.setItem('mf_cutoff_day', cutoffDay);
+      showToast('บันทึกแล้ว'); closeModal('settings-modal-overlay'); renderAll();
+    }
+  });
+  document.getElementById('btn-scan').addEventListener('click', () => document.getElementById('input-slip').click());
+  document.getElementById('input-slip').addEventListener('change', handleSlipScan);
+
+  setView('dashboard');
+  loadTransactions();
+}
+init();
+    </script>
+  </body>
+</html>

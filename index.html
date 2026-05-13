@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="แอปติดตามรายรับรายจ่ายส่วนตัว ซิงค์ข้อมูลผ่าน Google Sheets" />
+    <title>MoneyFlow — รายรับรายจ่าย</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="icon" type="image/png" href="./logo.png" />
+    <link rel="apple-touch-icon" href="./logo.png" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <!-- Animated Background -->
+    <div class="bg-orbs" aria-hidden="true">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Global Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+      <div class="loading-spinner"></div>
+      <p class="loading-text" id="loading-text">กำลังโหลด...</p>
+    </div>
+
+    <div class="app-wrapper">
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div class="logo">
+            <div class="logo-img-wrapper" id="logo-wrapper">
+              <img src="./logo.png" alt="MoneyFlow Logo" class="logo-img" onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='block';" />
+              <span id="logo-fallback" style="display:none; font-size: 24px;">💸</span>
+            </div>
+            <span class="logo-text">MoneyFlow</span>
+          </div>
+          <div class="sync-badge" id="sync-badge" title="สถานะซิงค์">
+            <span class="sync-dot"></span>
+            <span class="sync-label" id="sync-label">ออฟไลน์</span>
+          </div>
+          <button class="settings-btn" id="btn-open-settings" title="ตั้งค่าระบบ">⚙️</button>
+        </div>
+
+        <nav class="sidebar-nav">
+          <button class="nav-item active" data-view="dashboard" id="nav-dashboard">
+            <span class="nav-icon">📊</span>
+            <span>ภาพรวม</span>
+          </button>
+          <button class="nav-item" data-view="transactions" id="nav-transactions">
+            <span class="nav-icon">📋</span>
+            <span>รายการทั้งหมด</span>
+          </button>
+          <button class="nav-item" data-view="analytics" id="nav-analytics">
+            <span class="nav-icon">📊</span>
+            <span>หมวดหมู่</span>
+          </button>
+          <button class="nav-item" data-view="trends" id="nav-trends">
+            <span class="nav-icon">📈</span>
+            <span>แนวโน้ม</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button class="btn-sync" id="btn-sync" title="ซิงค์ข้อมูล">
+            <span class="sync-icon">🔄</span> ซิงค์ข้อมูล
+          </button>
+          <button class="btn-clear-all" id="btn-clear-all">
+            <span>🗑️</span> ล้างข้อมูล
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Header -->
+        <header class="top-bar">
+          <button class="menu-toggle" id="menu-toggle" aria-label="toggle menu">☰</button>
+          <div class="top-bar-title" id="page-title">ภาพรวม</div>
+          <div class="top-bar-right">
+            <div class="current-date" id="current-date"></div>
+            <button class="btn-add-primary" id="btn-open-modal">
+              <span>+</span> เพิ่มรายการ
+            </button>
+          </div>
+        </header>
+
+        <!-- Dashboard View -->
+        <section class="view active" id="view-dashboard">
+          <div class="summary-cards">
+            <div class="card card-balance">
+              <div class="card-label">ยอดคงเหลือ</div>
+              <div class="card-amount" id="total-balance">฿0.00</div>
+              <div class="card-sub" id="balance-trend"></div>
+            </div>
+            <div class="card card-income">
+              <div class="card-icon">↑</div>
+              <div class="card-label">รายรับ</div>
+              <div class="card-amount" id="total-income">฿0.00</div>
+            </div>
+            <div class="card card-expense">
+              <div class="card-icon">↓</div>
+              <div class="card-label">รายจ่าย</div>
+              <div class="card-amount" id="total-expense">฿0.00</div>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <h2 class="section-title">สัดส่วนรายจ่าย</h2>
+            <div class="expense-ratio-bar">
+              <div class="ratio-fill" id="ratio-fill"></div>
+            </div>
+            <div class="ratio-labels">
+              <span id="ratio-income-label">รายรับ 0%</span>
+              <span id="ratio-expense-label">รายจ่าย 0%</span>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-header">
+              <h2 class="section-title">รายการล่าสุด</h2>
+              <button class="link-btn" data-view="transactions" id="see-all-btn">ดูทั้งหมด →</button>
+            </div>
+            <div class="transaction-list" id="recent-list">
+              <div class="empty-state" id="empty-recent">
+                <div class="empty-icon">💰</div>
+                <p>ยังไม่มีรายการ<br/>กด "เพิ่มรายการ" เพื่อเริ่มต้น</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- All Transactions View -->
+        <section class="view" id="view-transactions">
+          <div class="section-card">
+            <div class="section-header">
+              <h2 class="section-title">รายการทั้งหมด</h2>
+              <div class="filter-group">
+                <select class="filter-select" id="filter-type">
+                  <option value="all">ทุกประเภท</option>
+                  <option value="income">รายรับ</option>
+                  <option value="expense">รายจ่าย</option>
+                </select>
+                <select class="filter-select" id="filter-category">
+                  <option value="all">ทุกหมวดหมู่</option>
+                </select>
+              </div>
+            </div>
+            <div class="transaction-list" id="all-list">
+              <div class="empty-state" id="empty-all">
+                <div class="empty-icon">📋</div>
+                <p>ไม่มีรายการที่ตรงกับเงื่อนไข</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Trends View -->
+        <section class="view" id="view-trends">
+          <div class="section-card">
+            <h2 class="section-title">แนวโน้มรายวัน (30 วันล่าสุด)</h2>
+            <div class="chart-container">
+              <canvas id="dailyTrendChart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- Analytics View -->
+        <section class="view" id="view-analytics">
+          <div class="section-card">
+            <h2 class="section-title">รายจ่ายแยกตามหมวดหมู่</h2>
+            <div class="category-breakdown" id="category-breakdown">
+              <div class="empty-state"><div class="empty-icon">📊</div><p>ยังไม่มีข้อมูล</p></div>
+            </div>
+          </div>
+          <div class="section-card">
+            <h2 class="section-title">รายรับแยกตามหมวดหมู่</h2>
+            <div class="category-breakdown" id="income-breakdown">
+              <div class="empty-state"><div class="empty-icon">💵</div><p>ยังไม่มีข้อมูล</p></div>
+            </div>
+          </div>
+        </section>
+
+
+      </main>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal">
+        <div class="modal-header">
+          <h2 class="modal-title" id="modal-title">เพิ่มรายการใหม่</h2>
+          <button class="modal-close" id="modal-close">✕</button>
+        </div>
+        <div class="scan-section">
+          <button type="button" class="btn-scan" id="btn-scan">
+            <span class="scan-icon">📸</span> สแกนสลิป / แนบรูปภาพ
+          </button>
+          <input type="file" id="input-slip" accept="image/*" style="display:none;" />
+          <div id="scan-progress" class="scan-progress">
+            <div class="progress-bar"></div>
+            <span class="progress-text">กำลังสแกน...</span>
+          </div>
+          <div id="image-preview-container" class="image-preview-container" style="display:none;">
+            <img id="image-preview" src="" alt="Preview" />
+            <button type="button" id="btn-remove-image" class="btn-remove-image">✕</button>
+          </div>
+        </div>
+        <div class="type-toggle">
+          <button class="type-btn active" id="type-income" data-type="income"><span>↑</span> รายรับ</button>
+          <button class="type-btn" id="type-expense" data-type="expense"><span>↓</span> รายจ่าย</button>
+        </div>
+        <form id="transaction-form" autocomplete="off">
+          <input type="hidden" id="edit-id" value="" />
+          <div class="form-group">
+            <label for="input-amount">จำนวนเงิน (฿)</label>
+            <input type="number" id="input-amount" class="form-input" placeholder="0.00" min="0" step="0.01" required />
+          </div>
+          <div class="form-group">
+            <label for="input-description">รายละเอียด</label>
+            <input type="text" id="input-description" class="form-input" placeholder="เช่น ค่าอาหารกลางวัน" required />
+          </div>
+          <div class="form-group">
+            <label for="input-category">หมวดหมู่</label>
+            <select id="input-category" class="form-input" required></select>
+          </div>
+          <div class="form-group">
+            <label for="input-date">วันและเวลา</label>
+            <input type="datetime-local" id="input-date" class="form-input" required />
+          </div>
+          <div class="form-group-inline">
+            <label class="checkbox-container">
+              <input type="checkbox" id="check-continue" />
+              <span class="checkbox-label">บันทึกและเพิ่มรายการต่อไป</span>
+            </label>
+          </div>
+          <button type="submit" class="btn-submit" id="btn-submit">
+            <span id="submit-label">เพิ่มรายการ</span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Delete Confirm Modal -->
+    <div class="modal-overlay" id="delete-overlay" role="dialog" aria-modal="true">
+      <div class="modal modal-sm">
+        <div class="modal-header">
+          <h2 class="modal-title">ยืนยันการลบ</h2>
+          <button class="modal-close" id="delete-cancel-x">✕</button>
+        </div>
+        <p class="confirm-text">คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้?</p>
+        <div class="confirm-actions">
+          <button class="btn-cancel" id="delete-cancel">ยกเลิก</button>
+          <button class="btn-danger" id="delete-confirm">ลบ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+      <div class="modal settings-modal">
+        <div class="modal-header">
+          <h2 class="modal-title" id="settings-modal-title">ตั้งค่าระบบ</h2>
+          <button class="modal-close" id="settings-modal-close">✕</button>
+        </div>
+        <div class="settings-body" style="padding: 24px;">
+          <div class="form-group">
+            <label for="input-cutoff-day">วันที่ตัดรอบบิลรายเดือน (1-31)</label>
+            <input type="number" id="input-cutoff-day" class="form-input" min="1" max="31" value="1" />
+            <p class="form-help" style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">ตัวอย่าง: หากตั้งเป็นวันที่ 25 รอบบิลปัจจุบันจะนับตั้งแต่วันที่ 25 ของเดือนก่อน จนถึงวันที่ 24 ของเดือนนี้</p>
+          </div>
+          <button class="btn-save btn-primary" id="btn-save-settings" style="width:100%; margin-top: 16px;">บันทึกการตั้งค่า</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
