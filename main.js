@@ -652,8 +652,11 @@ function renderDailyChart() {
     const endLabel   = end.toLocaleDateString('th-TH',   { day: 'numeric', month: 'short' });
     if (titleEl) titleEl.textContent = `แนวโน้มรายวัน (${startLabel} – ${endLabel})`;
   } else {
-    end   = new Date(today);
-    start = new Date(end); start.setDate(start.getDate() - 29); start.setHours(0, 0, 0, 0);
+    end = new Date(today);
+    const thirtyAgo  = new Date(today); thirtyAgo.setDate(thirtyAgo.getDate() - 29); thirtyAgo.setHours(0, 0, 0, 0);
+    const cycleStart = getCycleRange().start;
+    // Start from billing cutoff, but never more than 30 days back
+    start = cycleStart >= thirtyAgo ? cycleStart : thirtyAgo;
     if (noticeEl) noticeEl.style.display = '';
     const startLabel = start.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
     const endLabel   = end.toLocaleDateString('th-TH',   { day: 'numeric', month: 'short' });
