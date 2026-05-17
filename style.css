@@ -386,6 +386,84 @@ a { color: var(--indigo); text-decoration: none; }
 .filter-select:focus { outline: none; border-color: var(--indigo); }
 
 /* ========================
+   View Mode Toggle
+   ======================== */
+.tx-controls {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.view-mode-toggle {
+  display: flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;
+}
+.view-mode-btn {
+  padding: 6px 12px;
+  font-size: 12px; font-weight: 500; font-family: inherit;
+  color: var(--text-2);
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  transition: all var(--transition);
+}
+.view-mode-btn:last-child { border-right: none; }
+.view-mode-btn.active { background: var(--indigo); color: #fff; }
+.view-mode-btn:not(.active):hover { background: var(--bg); }
+
+/* ========================
+   Split View
+   ======================== */
+.tx-split-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+}
+.tx-split-col { display: flex; flex-direction: column; }
+.tx-split-header {
+  font-size: 13px; font-weight: 700;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  text-align: center;
+}
+.tx-split-header.income  { background: #dcfce7; color: #166534; }
+.tx-split-header.expense { background: #fee2e2; color: #991b1b; }
+
+/* ========================
+   Timeline Date Headers
+   ======================== */
+.timeline-date-header {
+  font-size: 11px; font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 12px 12px 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+  position: sticky; top: 0; background: var(--bg-card);
+  z-index: 1;
+}
+
+/* ========================
+   Slip Thumbnail (Pro)
+   ======================== */
+.tx-slip-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; color: var(--indigo);
+  margin-top: 4px;
+}
+.tx-slip-thumb {
+  width: 36px; height: 36px;
+  object-fit: cover; border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+/* ========================
+   Upgrade Notice (Trends)
+   ======================== */
+.upgrade-notice {
+  font-size: 13px; color: var(--text-2);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  margin-bottom: 14px;
+}
+
+/* ========================
    Analytics
    ======================== */
 .category-breakdown { display: flex; flex-direction: column; gap: 12px; }
@@ -799,6 +877,8 @@ a { color: var(--indigo); text-decoration: none; }
   .btn-add-primary span:last-child { display: none; }
   .filter-group { flex-direction: column; }
   .card-amount { font-size: 22px; }
+  .tx-split-grid { grid-template-columns: 1fr; }
+  .tx-split-header { position: static; }
 }
 
 /* ========================

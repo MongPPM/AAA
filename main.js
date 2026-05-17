@@ -57,6 +57,7 @@ let pendingDeleteId = null;
 let editingId    = null;
 let currentView  = 'dashboard';
 let cutoffDay    = parseInt(localStorage.getItem('mf_cutoff_day')) || 1;
+let txViewMode   = 'list'; // 'list' | 'split'
 let pendingImageData = null;
 let pendingImageMime = null;
 let dailyChartInstance = null;
@@ -478,13 +479,75 @@ function renderTransactionList(listId, items, emptyId) {
 // ========================
 // Render All Transactions
 // ========================
+function setTxViewMode(mode) {
+  txViewMode = mode;
+  const isSplit = mode === 'split';
+  document.getElementById('tx-list-view').style.display  = isSplit ? 'none' : '';
+  document.getElementById('tx-split-view').style.display = isSplit ? '' : 'none';
+  document.getElementById('filter-type').style.display   = isSplit ? 'none' : '';
+  document.getElementById('btn-view-list').classList.toggle('active', !isSplit);
+  document.getElementById('btn-view-split').classList.toggle('active', isSplit);
+  renderAllTransactions();
+}
+
 function renderAllTransactions() {
-  const filterType = document.getElementById('filter-type').value;
-  const filterCat  = document.getElementById('filter-category').value;
-  let filtered = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
-  if (filterType !== 'all') filtered = filtered.filter(t => t.type === filterType);
-  if (filterCat  !== 'all') filtered = filtered.filter(t => t.category === filterCat);
-  renderTransactionList('all-list', filtered, 'empty-all');
+  const filterCat = document.getElementById('filter-category').value;
+  if (txViewMode === 'split') {
+    let income  = transactions.filter(t => t.type === 'income').sort((a, b) => new Date(b.date) - new Date(a.date));
+    let expense = transactions.filter(t => t.type === 'expense').sort((a, b) => new Date(b.date) - new Date(a.date));
+    if (filterCat !== 'all') { income = income.filter(t => t.category === filterCat); expense = expense.filter(t => t.category === filterCat); }
+    renderTimelineList('split-income-list',  income,  'empty-split-income');
+    renderTimelineList('split-expense-list', expense, 'empty-split-expense');
+  } else {
+    const filterType = document.getElementById('filter-type').value;
+    let filtered = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+    if (filterType !== 'all') filtered = filtered.filter(t => t.type === filterType);
+    if (filterCat  !== 'all') filtered = filtered.filter(t => t.category === filterCat);
+    renderTimelineList('all-list', filtered, 'empty-all');
+  }
+}
+
+function renderTimelineList(listId, items, emptyId) {
+  const container = document.getElementById(listId);
+  if (!container) return;
+  container.innerHTML = '';
+  if (items.length === 0) {
+    const emptyTemplate = document.getElementById(emptyId);
+    if (emptyTemplate) container.appendChild(emptyTemplate.cloneNode(true));
+    else container.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>ไม่มีรายการ</p></div>';
+    return;
+  }
+  let lastDay = null;
+  items.forEach(tx => {
+    const day = tx.date ? tx.date.slice(0, 10) : '';
+    if (day !== lastDay) {
+      lastDay = day;
+      const hdr = document.createElement('div');
+      hdr.className = 'timeline-date-header';
+      const d = new Date(day + 'T00:00:00');
+      hdr.textContent = isNaN(d) ? day : d.toLocaleDateString('th-TH', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+      container.appendChild(hdr);
+    }
+    const cat = getCategoryInfo(tx.type, tx.category);
+    const div = document.createElement('div');
+    div.className = 'transaction-item';
+    const showSlip = userPlan === 'pro' && tx.imageUrl && tx.imageUrl.startsWith('https://');
+    div.innerHTML = `
+      <div class="tx-emoji">${cat.emoji}</div>
+      <div class="tx-info">
+        <div class="tx-desc">${escapeHtml(tx.description)}</div>
+        <div class="tx-meta">${cat.label} · ${formatDate(tx.date)}</div>
+        ${showSlip ? `<a href="${escapeHtml(tx.imageUrl)}" target="_blank" rel="noopener noreferrer" class="tx-slip-link"><img src="${escapeHtml(tx.imageUrl)}" alt="สลิป" class="tx-slip-thumb" loading="lazy" onerror="this.parentElement.style.display='none'">ดูสลิป ↗</a>` : ''}
+      </div>
+      <div class="tx-amount ${tx.type}">${tx.type === 'income' ? '+' : '-'}${formatCurrency(tx.amount)}</div>
+      <div class="tx-actions">
+        <button class="tx-btn tx-btn-edit"   data-id="${tx.id}" title="แก้ไข">✏️</button>
+        <button class="tx-btn tx-btn-delete" data-id="${tx.id}" title="ลบ">🗑️</button>
+      </div>`;
+    container.appendChild(div);
+  });
+  container.querySelectorAll('.tx-btn-edit').forEach(btn => btn.addEventListener('click', () => openEditModal(btn.dataset.id)));
+  container.querySelectorAll('.tx-btn-delete').forEach(btn => btn.addEventListener('click', () => openDeleteModal(btn.dataset.id)));
 }
 
 // ========================
@@ -499,7 +562,21 @@ function renderDailyChart() {
   const ctx = document.getElementById('dailyTrendChart');
   if (!ctx) return;
 
-  const { start, end } = getCycleRange();
+  let start, end;
+  const noticeEl = document.getElementById('trends-free-notice');
+  const titleEl  = document.getElementById('trends-title');
+  if (userPlan === 'pro') {
+    const cycle = getCycleRange();
+    start = cycle.start; end = cycle.end;
+    if (noticeEl) noticeEl.style.display = 'none';
+    if (titleEl) titleEl.textContent = 'แนวโน้มรายวัน (รอบบิลปัจจุบัน)';
+  } else {
+    end   = new Date(); end.setHours(23, 59, 59, 999);
+    start = new Date(end); start.setDate(start.getDate() - 29); start.setHours(0, 0, 0, 0);
+    if (noticeEl) noticeEl.style.display = '';
+    if (titleEl) titleEl.textContent = 'แนวโน้มรายวัน (30 วันล่าสุด)';
+  }
+
   const labels = [], incomeData = [], expenseData = [];
 
   const dateIndex = new Map();
@@ -820,6 +897,7 @@ function updateDevToggleUI() {
 }
 
 function handleDevToggle() {
+  if (!DEV_EMAILS.includes(currentUser?.email)) return;
   devPlanOverride = userPlan === 'pro' ? 'free' : 'pro';
   localStorage.setItem('mf_dev_plan', devPlanOverride);
   userPlan = devPlanOverride;
@@ -1007,6 +1085,10 @@ function init() {
     if (e.target === e.currentTarget) closeModal('upgrade-modal-overlay');
   });
   document.getElementById('btn-pay-omise').addEventListener('click', handleUpgradePayment);
+
+  // Transaction view mode toggle
+  document.getElementById('btn-view-list')?.addEventListener('click', () => setTxViewMode('list'));
+  document.getElementById('btn-view-split')?.addEventListener('click', () => setTxViewMode('split'));
 
   // Dev toggle (hidden for non-dev users)
   const devToggleBtn = document.getElementById('btn-dev-toggle');

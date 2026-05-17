@@ -167,21 +167,47 @@
           <div class="section-card">
             <div class="section-header">
               <h2 class="section-title">รายการทั้งหมด</h2>
-              <div class="filter-group">
-                <select class="filter-select" id="filter-type">
-                  <option value="all">ทุกประเภท</option>
-                  <option value="income">รายรับ</option>
-                  <option value="expense">รายจ่าย</option>
-                </select>
-                <select class="filter-select" id="filter-category">
-                  <option value="all">ทุกหมวดหมู่</option>
-                </select>
+              <div class="tx-controls">
+                <div class="view-mode-toggle">
+                  <button class="view-mode-btn active" id="btn-view-list" title="มุมมองรายการ">☰ รายการ</button>
+                  <button class="view-mode-btn" id="btn-view-split" title="แยกรายรับ/รายจ่าย">⊞ แยก</button>
+                </div>
+                <div class="filter-group">
+                  <select class="filter-select" id="filter-type">
+                    <option value="all">ทุกประเภท</option>
+                    <option value="income">รายรับ</option>
+                    <option value="expense">รายจ่าย</option>
+                  </select>
+                  <select class="filter-select" id="filter-category">
+                    <option value="all">ทุกหมวดหมู่</option>
+                  </select>
+                </div>
               </div>
             </div>
-            <div class="transaction-list" id="all-list">
-              <div class="empty-state" id="empty-all">
-                <div class="empty-icon">📋</div>
-                <p>ไม่มีรายการที่ตรงกับเงื่อนไข</p>
+            <!-- List view -->
+            <div id="tx-list-view">
+              <div class="transaction-list" id="all-list">
+                <div class="empty-state" id="empty-all">
+                  <div class="empty-icon">📋</div>
+                  <p>ไม่มีรายการที่ตรงกับเงื่อนไข</p>
+                </div>
+              </div>
+            </div>
+            <!-- Split view -->
+            <div id="tx-split-view" style="display:none">
+              <div class="tx-split-grid">
+                <div class="tx-split-col income-col">
+                  <div class="tx-split-header income">💰 รายรับ</div>
+                  <div class="transaction-list" id="split-income-list">
+                    <div class="empty-state" id="empty-split-income"><div class="empty-icon">💰</div><p>ยังไม่มีรายรับ</p></div>
+                  </div>
+                </div>
+                <div class="tx-split-col expense-col">
+                  <div class="tx-split-header expense">💸 รายจ่าย</div>
+                  <div class="transaction-list" id="split-expense-list">
+                    <div class="empty-state" id="empty-split-expense"><div class="empty-icon">💸</div><p>ยังไม่มีรายจ่าย</p></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -190,7 +216,11 @@
         <!-- Trends View -->
         <section class="view" id="view-trends">
           <div class="section-card">
-            <h2 class="section-title">แนวโน้มรายวัน (รอบบิลปัจจุบัน)</h2>
+            <h2 class="section-title" id="trends-title">แนวโน้มรายวัน (รอบบิลปัจจุบัน)</h2>
+            <div class="upgrade-notice" id="trends-free-notice" style="display:none">
+              📊 Free plan ดูย้อนหลังได้สูงสุด 30 วัน &nbsp;—&nbsp;
+              <button class="link-btn" onclick="openUpgradeModal('อัปเกรด Pro เพื่อดูแนวโน้มตามรอบบิล')">อัปเกรดเป็น Pro ↗</button>
+            </div>
             <div class="chart-container">
               <canvas id="dailyTrendChart"></canvas>
             </div>
