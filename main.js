@@ -75,14 +75,23 @@ const metaRef = () => doc(db, 'users', currentUser.uid, 'meta');
 // ========================
 // Auth State Driver
 // ========================
-onAuthStateChanged(auth, async (user) => {
+onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
     showApp();
-    showLoading('กำลังโหลดข้อมูล...');
-    await loadUserMeta();
-    setupRealtimeListener();
     updateUserProfile();
+
+    // Show cached data immediately — no spinner if we have local data
+    if (transactions.length > 0) {
+      setSyncStatus('syncing');
+      renderAll();
+    } else {
+      showLoading('กำลังโหลดข้อมูล...');
+    }
+
+    // Run meta + listener in parallel — don't await sequentially
+    loadUserMeta();
+    setupRealtimeListener();
   } else {
     currentUser = null;
     if (unsubscribeSnap) { unsubscribeSnap(); unsubscribeSnap = null; }
