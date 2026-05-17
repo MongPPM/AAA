@@ -1097,7 +1097,7 @@ function openChangelog() {
           </li>`).join('')}
       </ul>
     </div>`).join('');
-  document.getElementById('changelog-overlay').style.display = 'flex';
+  document.getElementById('changelog-overlay').classList.add('open');
   if (window.innerWidth <= 900) document.getElementById('sidebar').classList.remove('open');
 }
 
@@ -1237,10 +1237,10 @@ function init() {
   // Changelog
   document.getElementById('btn-changelog').addEventListener('click', openChangelog);
   document.getElementById('changelog-close').addEventListener('click', () => {
-    document.getElementById('changelog-overlay').style.display = 'none';
+    document.getElementById('changelog-overlay').classList.remove('open');
   });
   document.getElementById('changelog-overlay').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
   });
 
   // Slip lightbox close
