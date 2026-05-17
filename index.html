@@ -195,6 +195,27 @@
             </div>
             <!-- Split view -->
             <div id="tx-split-view" style="display:none">
+              <!-- Balance Scale -->
+              <div class="balance-scale" id="balance-scale">
+                <div class="scale-amounts">
+                  <span class="scale-amount income" id="scale-income-total">฿0.00</span>
+                  <span class="scale-verdict" id="scale-verdict">เท่ากัน</span>
+                  <span class="scale-amount expense" id="scale-expense-total">฿0.00</span>
+                </div>
+                <div class="scale-visual">
+                  <div class="scale-pole"></div>
+                  <div class="scale-beam" id="scale-beam">
+                    <div class="scale-string left"></div>
+                    <div class="scale-string right"></div>
+                    <div class="scale-pan left" id="scale-pan-left">💰</div>
+                    <div class="scale-pan right" id="scale-pan-right">💸</div>
+                  </div>
+                </div>
+                <div class="scale-labels">
+                  <span>รายรับ</span>
+                  <span>รายจ่าย</span>
+                </div>
+              </div>
               <div class="tx-split-grid">
                 <div class="tx-split-col income-col">
                   <div class="tx-split-header income">💰 รายรับ</div>

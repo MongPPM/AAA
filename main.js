@@ -515,12 +515,45 @@ function setTxViewMode(mode) {
   renderAllTransactions();
 }
 
+function updateBalanceScale(incomeList, expenseList) {
+  const beam       = document.getElementById('scale-beam');
+  const panLeft    = document.getElementById('scale-pan-left');
+  const panRight   = document.getElementById('scale-pan-right');
+  const verdict    = document.getElementById('scale-verdict');
+  const incomeEl   = document.getElementById('scale-income-total');
+  const expenseEl  = document.getElementById('scale-expense-total');
+  if (!beam) return;
+
+  const inc = incomeList.reduce((s, t) => s + Number(t.amount), 0);
+  const exp = expenseList.reduce((s, t) => s + Number(t.amount), 0);
+  const total = inc + exp;
+
+  // Tilt: expense heavier → clockwise (+), income heavier → counter-clockwise (-)
+  const angle = total > 0 ? ((exp - inc) / total) * 22 : 0;
+  beam.style.transform = `rotate(${angle}deg)`;
+
+  panLeft.classList.toggle('heavy',  inc > exp);
+  panRight.classList.toggle('heavy', exp > inc);
+
+  if (incomeEl)  incomeEl.textContent  = formatCurrency(inc);
+  if (expenseEl) expenseEl.textContent = formatCurrency(exp);
+
+  if (verdict) {
+    const diff = Math.abs(inc - exp);
+    if (total === 0)  { verdict.textContent = 'ยังไม่มีรายการ'; verdict.className = 'scale-verdict'; }
+    else if (inc > exp) { verdict.textContent = `+${formatCurrency(diff)}`; verdict.className = 'scale-verdict positive'; }
+    else if (exp > inc) { verdict.textContent = `-${formatCurrency(diff)}`; verdict.className = 'scale-verdict negative'; }
+    else               { verdict.textContent = 'เท่ากันพอดี'; verdict.className = 'scale-verdict'; }
+  }
+}
+
 function renderAllTransactions() {
   const filterCat = document.getElementById('filter-category').value;
   if (txViewMode === 'split') {
     let income  = transactions.filter(t => t.type === 'income').sort((a, b) => new Date(b.date) - new Date(a.date));
     let expense = transactions.filter(t => t.type === 'expense').sort((a, b) => new Date(b.date) - new Date(a.date));
     if (filterCat !== 'all') { income = income.filter(t => t.category === filterCat); expense = expense.filter(t => t.category === filterCat); }
+    updateBalanceScale(income, expense);
     renderTimelineList('split-income-list',  income,  'empty-split-income');
     renderTimelineList('split-expense-list', expense, 'empty-split-expense');
   } else {

@@ -432,6 +432,79 @@ a { color: var(--indigo); text-decoration: none; }
 .tx-split-header.expense { background: #fee2e2; color: #991b1b; }
 
 /* ========================
+   Balance Scale
+   ======================== */
+.balance-scale {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px 0 12px; gap: 6px;
+  user-select: none;
+}
+.scale-amounts {
+  display: flex; align-items: center; gap: 16px;
+  font-size: 14px; font-weight: 700;
+}
+.scale-amount.income  { color: var(--green); min-width: 90px; text-align: right; }
+.scale-amount.expense { color: var(--red);   min-width: 90px; text-align: left; }
+.scale-verdict {
+  font-size: 11px; font-weight: 600;
+  color: var(--text-3);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 2px 10px; white-space: nowrap;
+}
+.scale-verdict.positive { color: var(--green); border-color: #bbf7d0; background: #f0fdf4; }
+.scale-verdict.negative { color: var(--red);   border-color: #fecaca; background: #fff1f2; }
+
+.scale-visual {
+  position: relative;
+  width: 200px; height: 72px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.scale-pole {
+  width: 3px; height: 28px;
+  background: var(--text-2);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.scale-beam {
+  position: absolute; top: 24px;
+  width: 170px; height: 4px;
+  background: var(--text-2);
+  border-radius: 2px;
+  transform-origin: center center;
+  transition: transform 0.6s cubic-bezier(.34,1.56,.64,1);
+}
+.scale-string {
+  position: absolute; top: 4px;
+  width: 2px; height: 18px;
+  background: var(--text-3);
+  border-radius: 1px;
+}
+.scale-string.left  { left: 4px; }
+.scale-string.right { right: 4px; }
+.scale-pan {
+  position: absolute; top: 18px;
+  font-size: 22px;
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  transition: all 0.6s cubic-bezier(.34,1.56,.64,1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+.scale-pan.left  { left: -14px; }
+.scale-pan.right { right: -14px; }
+.scale-pan.heavy { border-color: var(--indigo); box-shadow: 0 4px 12px rgba(99,102,241,0.2); }
+
+.scale-labels {
+  display: flex; justify-content: space-between;
+  width: 200px;
+  font-size: 11px; color: var(--text-3); font-weight: 500;
+}
+
+/* ========================
    Timeline Date Headers
    ======================== */
 .timeline-date-header {
