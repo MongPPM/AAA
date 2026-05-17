@@ -1,0 +1,39 @@
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).end();
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: 'GEMINI_API_KEY ยังไม่ได้ตั้งค่าใน Vercel Environment Variables' });
+  }
+
+  const { base64Data, mimeType } = req.body;
+  if (!base64Data) return res.status(400).json({ error: 'ไม่มีข้อมูลรูปภาพ' });
+
+  const geminiRes = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [
+          { text: 'Extract transaction details from this Thai bank slip image. Return ONLY JSON: {"amount": 123.45, "description": "recipient name"}. If no amount found return {"amount": null, "description": ""}. Focus on the total transfer amount.' },
+          { inline_data: { mime_type: mimeType || 'image/jpeg', data: base64Data } }
+        ]}]
+      })
+    }
+  );
+
+  if (!geminiRes.ok) {
+    const err = await geminiRes.json().catch(() => ({}));
+    return res.status(geminiRes.status).json({ error: err.error?.message || `Gemini API Error ${geminiRes.status}` });
+  }
+
+  const result = await geminiRes.json();
+  const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!aiText) return res.status(500).json({ error: 'AI ส่งข้อมูลกลับมาผิดรูปแบบ' });
+
+  const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return res.status(500).json({ error: 'AI ไม่พบ JSON ในคำตอบ' });
+
+  return res.json(JSON.parse(jsonMatch[0]));
+}
