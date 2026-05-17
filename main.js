@@ -353,14 +353,13 @@ function renderDailyChart() {
   const ctx = document.getElementById('dailyTrendChart');
   if (!ctx) return;
 
-  // Calculate last 30 days
+  // Use the same billing cycle as the rest of the app
+  const { start, end } = getCycleRange();
   const labels = [];
   const incomeData = [];
   const expenseData = [];
-  
-  const now = new Date();
 
-  // Build date index once O(n) instead of filtering 30 times O(30n)
+  // Build date index O(n)
   const dateIndex = new Map();
   transactions.forEach(t => {
     const day = t.date ? t.date.slice(0, 10) : null;
@@ -371,22 +370,29 @@ function renderDailyChart() {
     else entry.expense += Number(t.amount);
   });
 
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(now.getDate() - i);
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    labels.push(d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
+  // Iterate each day in the cycle
+  const cursor = new Date(start);
+  while (cursor < end) {
+    const dateStr = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+    labels.push(cursor.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
     const entry = dateIndex.get(dateStr) || { income: 0, expense: 0 };
     incomeData.push(entry.income);
     expenseData.push(entry.expense);
+    cursor.setDate(cursor.getDate() + 1);
   }
 
   if (dailyChartInstance) {
-    dailyChartInstance.data.labels = labels;
-    dailyChartInstance.data.datasets[0].data = incomeData;
-    dailyChartInstance.data.datasets[1].data = expenseData;
-    dailyChartInstance.update('none');
-    return;
+    // Destroy and recreate if number of days changed (cycle boundary crossed)
+    if (dailyChartInstance.data.labels.length !== labels.length) {
+      dailyChartInstance.destroy();
+      dailyChartInstance = null;
+    } else {
+      dailyChartInstance.data.labels = labels;
+      dailyChartInstance.data.datasets[0].data = incomeData;
+      dailyChartInstance.data.datasets[1].data = expenseData;
+      dailyChartInstance.update('none');
+      return;
+    }
   }
 
   dailyChartInstance = new Chart(ctx, {
@@ -397,14 +403,14 @@ function renderDailyChart() {
         {
           label: 'รายรับ',
           data: incomeData,
-          backgroundColor: '#22c55e',
-          borderRadius: 4,
+          backgroundColor: '#16A34A',
+          borderRadius: 6,
         },
         {
           label: 'รายจ่าย',
           data: expenseData,
-          backgroundColor: '#f43f5e',
-          borderRadius: 4,
+          backgroundColor: '#EF4444',
+          borderRadius: 6,
         }
       ]
     },
@@ -414,7 +420,7 @@ function renderDailyChart() {
       plugins: {
         legend: {
           display: true,
-          labels: { color: '#94a3b8', font: { family: 'Inter' } }
+          labels: { color: '#64748B', font: { family: 'Noto Sans Thai', size: 12 } }
         },
         tooltip: {
           mode: 'index',
@@ -424,13 +430,14 @@ function renderDailyChart() {
       scales: {
         x: {
           grid: { display: false },
-          ticks: { color: '#94a3b8' }
+          ticks: { color: '#64748B', font: { size: 11 } }
         },
         y: {
           beginAtZero: true,
-          grid: { color: 'rgba(255,255,255,0.05)' },
+          grid: { color: 'rgba(0,0,0,0.05)' },
           ticks: {
-            color: '#94a3b8',
+            color: '#64748B',
+            font: { size: 11 },
             callback: (val) => '฿' + val.toLocaleString()
           }
         }
