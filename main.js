@@ -714,7 +714,14 @@ async function handleSlipScan(e) {
     
   } catch (err) {
     console.error('Gemini scan error:', err);
-    showToast('⚠️ สแกนไม่ได้: ' + err.message + ' — รูปยังแนบอยู่ กรอกยอดเองได้เลย', 'error', 6000);
+    // If key is rejected/revoked, clear it and show the key panel again
+    if (err.message.includes('API key') || err.message.includes('PERMISSION_DENIED') || err.message.includes('leaked')) {
+      localStorage.removeItem('mf_gemini_key');
+      document.getElementById('gemini-key-panel').style.display = 'block';
+      showToast('⚠️ API Key ไม่ถูกต้อง กรุณาใส่ key ใหม่', 'error', 6000);
+    } else {
+      showToast('⚠️ สแกนไม่ได้: ' + err.message + ' — รูปยังแนบอยู่', 'error', 6000);
+    }
   } finally {
     setTimeout(() => progressEl.classList.remove('active'), 500);
   }
@@ -853,8 +860,24 @@ function init() {
     }
   });
 
-  // Slip Scan
-  document.getElementById('btn-scan').addEventListener('click', () => document.getElementById('input-slip').click());
+  // Slip Scan — show inline key panel if no key saved yet
+  document.getElementById('btn-scan').addEventListener('click', () => {
+    if (!localStorage.getItem('mf_gemini_key')) {
+      const panel = document.getElementById('gemini-key-panel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') document.getElementById('inline-gemini-key').focus();
+      return;
+    }
+    document.getElementById('input-slip').click();
+  });
+  document.getElementById('btn-save-gemini-key').addEventListener('click', () => {
+    const key = document.getElementById('inline-gemini-key').value.trim();
+    if (!key.startsWith('AIza')) { showToast('Key ไม่ถูกต้อง ต้องขึ้นต้นด้วย AIza', 'error'); return; }
+    localStorage.setItem('mf_gemini_key', key);
+    document.getElementById('gemini-key-panel').style.display = 'none';
+    document.getElementById('inline-gemini-key').value = '';
+    document.getElementById('input-slip').click();
+  });
   document.getElementById('input-slip').addEventListener('change', handleSlipScan);
 
 

@@ -200,6 +200,13 @@
             <span class="scan-icon">📸</span> สแกนสลิป / แนบรูปภาพ
           </button>
           <input type="file" id="input-slip" accept="image/*" style="display:none;" />
+          <div id="gemini-key-panel" style="display:none; margin-top:10px; padding:12px; background:var(--card-bg); border:1px solid var(--border); border-radius:10px; font-size:13px;">
+            <p style="margin:0 0 8px; color:var(--text-secondary);">🔑 ต้องใช้ Gemini API Key เพื่อสแกน AI<br>สร้างฟรีได้ที่ <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent);">aistudio.google.com</a></p>
+            <div style="display:flex; gap:8px;">
+              <input type="password" id="inline-gemini-key" class="form-input" placeholder="AIzaSy..." style="flex:1; font-size:13px; padding:8px;" />
+              <button type="button" id="btn-save-gemini-key" class="btn-primary" style="padding:8px 14px; font-size:13px; white-space:nowrap;">บันทึกและสแกน</button>
+            </div>
+          </div>
           <div id="scan-progress" class="scan-progress">
             <div class="progress-bar"></div>
             <span class="progress-text">กำลังสแกน...</span>
