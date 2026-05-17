@@ -44,8 +44,9 @@ const CAT_MAP = new Map(
 const OMISE_PUBLIC_KEY = 'pkey_test_YOUR_OMISE_PUBLIC_KEY';
 const FREE_SCAN_LIMIT = 10;
 
-// Dev/admin accounts — always Pro, bypass payment
+// Dev/admin accounts — can toggle Free/Pro for testing
 const DEV_EMAILS = ['nunmongss@gmail.com'];
+let devPlanOverride = localStorage.getItem('mf_dev_plan') || 'pro';
 
 // ========================
 // State
@@ -156,10 +157,11 @@ function setupRealtimeListener() {
 // ========================
 async function loadUserMeta() {
   try {
-    // Dev accounts always get Pro
+    // Dev accounts use override (toggleable Free/Pro)
     if (DEV_EMAILS.includes(currentUser?.email)) {
-      userPlan = 'pro';
+      userPlan = devPlanOverride;
       updatePlanUI();
+      updateDevToggleUI();
       return;
     }
     const snap = await getDoc(metaRef());
@@ -800,6 +802,26 @@ function fileToBase64(file) {
 }
 
 // ========================
+// Dev Plan Toggle
+// ========================
+function updateDevToggleUI() {
+  const btn = document.getElementById('btn-dev-toggle');
+  if (!btn) return;
+  const isDev = DEV_EMAILS.includes(currentUser?.email);
+  btn.style.display = isDev ? '' : 'none';
+  btn.textContent = userPlan === 'pro' ? '🔧 Dev: Pro → สลับ Free' : '🔧 Dev: Free → สลับ Pro';
+}
+
+function handleDevToggle() {
+  devPlanOverride = userPlan === 'pro' ? 'free' : 'pro';
+  localStorage.setItem('mf_dev_plan', devPlanOverride);
+  userPlan = devPlanOverride;
+  updatePlanUI();
+  updateDevToggleUI();
+  showToast('🔧 Dev: สลับเป็น ' + (userPlan === 'pro' ? 'Pro ⭐' : 'Free'));
+}
+
+// ========================
 // Payment (Omise)
 // ========================
 async function handleUpgradePayment() {
@@ -978,6 +1000,10 @@ function init() {
     if (e.target === e.currentTarget) closeModal('upgrade-modal-overlay');
   });
   document.getElementById('btn-pay-omise').addEventListener('click', handleUpgradePayment);
+
+  // Dev toggle (hidden for non-dev users)
+  const devToggleBtn = document.getElementById('btn-dev-toggle');
+  if (devToggleBtn) devToggleBtn.addEventListener('click', handleDevToggle);
 
   // Sign out
   document.getElementById('btn-signout').addEventListener('click', handleSignOut);

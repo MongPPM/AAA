@@ -1006,3 +1006,16 @@ a { color: var(--indigo); text-decoration: none; }
   padding: 6px 0 2px;
   letter-spacing: 0.3px;
 }
+
+.btn-dev-toggle {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 8px 12px;
+  font-size: 12px; font-weight: 600;
+  color: #92400E; background: #FEF3C7;
+  border: 1px dashed #F59E0B;
+  border-radius: var(--radius-sm);
+  cursor: pointer; font-family: inherit;
+  transition: all var(--transition);
+  margin-bottom: 2px;
+}
+.btn-dev-toggle:hover { background: #FDE68A; }
