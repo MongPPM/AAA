@@ -43,6 +43,9 @@ const CAT_MAP = new Map(
 const OMISE_PUBLIC_KEY = 'pkey_test_YOUR_OMISE_PUBLIC_KEY';
 const FREE_SCAN_LIMIT = 10;
 
+// Dev/admin accounts — always Pro, bypass payment
+const DEV_EMAILS = ['nunmongss@gmail.com'];
+
 // ========================
 // State
 // ========================
@@ -150,6 +153,12 @@ function setupRealtimeListener() {
 // ========================
 async function loadUserMeta() {
   try {
+    // Dev accounts always get Pro
+    if (DEV_EMAILS.includes(currentUser?.email)) {
+      userPlan = 'pro';
+      updatePlanUI();
+      return;
+    }
     const snap = await getDoc(metaRef());
     if (snap.exists()) {
       const data = snap.data();
