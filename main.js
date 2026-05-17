@@ -645,24 +645,22 @@ function renderDailyChart() {
   const noticeEl = document.getElementById('trends-free-notice');
   const titleEl  = document.getElementById('trends-title');
   const today = new Date(); today.setHours(23, 59, 59, 999);
+  const cycle = getCycleRange();
+  // Last day of billing period = cycle.end - 1 day (cycle.end is exclusive)
+  const cycleLastDay = new Date(cycle.end); cycleLastDay.setDate(cycleLastDay.getDate() - 1);
+  const startLabel = cycle.start.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+  const endLabel   = cycleLastDay.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+
   if (userPlan === 'pro') {
-    const cycle = getCycleRange();
     start = cycle.start;
-    // Cap at today — don't show future empty bars
-    end = cycle.end > today ? today : cycle.end;
+    end   = cycle.end > today ? today : cycle.end; // cap at today — no empty bars
     if (noticeEl) noticeEl.style.display = 'none';
-    const startLabel = start.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
-    const endLabel   = end.toLocaleDateString('th-TH',   { day: 'numeric', month: 'short' });
     if (titleEl) titleEl.textContent = `แนวโน้มรายวัน (${startLabel} – ${endLabel})`;
   } else {
     end = new Date(today);
-    const thirtyAgo  = new Date(today); thirtyAgo.setDate(thirtyAgo.getDate() - 29); thirtyAgo.setHours(0, 0, 0, 0);
-    const cycleStart = getCycleRange().start;
-    // Start from billing cutoff, but never more than 30 days back
-    start = cycleStart >= thirtyAgo ? cycleStart : thirtyAgo;
+    const thirtyAgo = new Date(today); thirtyAgo.setDate(thirtyAgo.getDate() - 29); thirtyAgo.setHours(0, 0, 0, 0);
+    start = cycle.start >= thirtyAgo ? cycle.start : thirtyAgo;
     if (noticeEl) noticeEl.style.display = '';
-    const startLabel = start.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
-    const endLabel   = end.toLocaleDateString('th-TH',   { day: 'numeric', month: 'short' });
     if (titleEl) titleEl.textContent = `แนวโน้มรายวัน (${startLabel} – ${endLabel})`;
   }
 
