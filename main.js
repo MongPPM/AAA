@@ -58,8 +58,9 @@ let editingId    = null;
 let currentView  = 'dashboard';
 let cutoffDay    = parseInt(localStorage.getItem('mf_cutoff_day')) || 1;
 let txViewMode   = 'list'; // 'list' | 'split'
-let pendingImageData = null;
-let pendingImageMime = null;
+let pendingImageData     = null;
+let pendingImageMime     = null;
+let pendingImageStored   = null; // compressed base64 for saving
 let dailyChartInstance = null;
 
 // Auth & plan state
@@ -440,7 +441,7 @@ function renderDashboard() {
 }
 
 // ========================
-// Render Transaction List
+// Render Transaction List (dashboard)
 // ========================
 function renderTransactionList(listId, items, emptyId) {
   const container = document.getElementById(listId);
@@ -452,6 +453,7 @@ function renderTransactionList(listId, items, emptyId) {
   }
   items.forEach(tx => {
     const cat = getCategoryInfo(tx.type, tx.category);
+    const hasImage = !!tx.imageData;
     const div = document.createElement('div');
     div.className = 'transaction-item';
     div.innerHTML = `
@@ -459,7 +461,7 @@ function renderTransactionList(listId, items, emptyId) {
       <div class="tx-info">
         <div class="tx-desc">
           ${escapeHtml(tx.description)}
-          ${tx.imageUrl && tx.imageUrl.startsWith('https://') ? `<a href="${escapeHtml(tx.imageUrl)}" target="_blank" rel="noopener noreferrer" class="tx-image-link" title="ดูรูปภาพ">🖼️</a>` : ''}
+          ${hasImage ? `<button class="tx-image-btn" data-id="${tx.id}" title="ดูสลิป">📷</button>` : ''}
         </div>
         <div class="tx-meta">${cat.label} · ${formatDate(tx.date)}</div>
       </div>
@@ -474,6 +476,15 @@ function renderTransactionList(listId, items, emptyId) {
   });
   container.querySelectorAll('.tx-btn-edit').forEach(btn => btn.addEventListener('click', () => openEditModal(btn.dataset.id)));
   container.querySelectorAll('.tx-btn-delete').forEach(btn => btn.addEventListener('click', () => openDeleteModal(btn.dataset.id)));
+  container.querySelectorAll('.tx-image-btn').forEach(btn => btn.addEventListener('click', () => openSlipLightbox(btn.dataset.id)));
+}
+
+function openSlipLightbox(txId) {
+  const tx = transactions.find(t => t.id === txId);
+  if (!tx?.imageData) return;
+  const lb = document.getElementById('slip-lightbox');
+  document.getElementById('slip-lightbox-img').src = tx.imageData;
+  lb.classList.add('active');
 }
 
 // ========================
@@ -531,13 +542,17 @@ function renderTimelineList(listId, items, emptyId) {
     const cat = getCategoryInfo(tx.type, tx.category);
     const div = document.createElement('div');
     div.className = 'transaction-item';
-    const showSlip = userPlan === 'pro' && tx.imageUrl && tx.imageUrl.startsWith('https://');
+    const hasImage = !!tx.imageData;
+    const showSlip = userPlan === 'pro' && hasImage;
     div.innerHTML = `
       <div class="tx-emoji">${cat.emoji}</div>
       <div class="tx-info">
-        <div class="tx-desc">${escapeHtml(tx.description)}</div>
+        <div class="tx-desc">
+          ${escapeHtml(tx.description)}
+          ${hasImage ? `<button class="tx-image-btn" data-id="${tx.id}" title="ดูสลิป">📷</button>` : ''}
+        </div>
         <div class="tx-meta">${cat.label} · ${formatDate(tx.date)}</div>
-        ${showSlip ? `<a href="${escapeHtml(tx.imageUrl)}" target="_blank" rel="noopener noreferrer" class="tx-slip-link"><img src="${escapeHtml(tx.imageUrl)}" alt="สลิป" class="tx-slip-thumb" loading="lazy" onerror="this.parentElement.style.display='none'">ดูสลิป ↗</a>` : ''}
+        ${showSlip ? `<button class="tx-slip-link" data-id="${tx.id}"><img src="${tx.imageData}" alt="สลิป" class="tx-slip-thumb" loading="lazy">ดูสลิป ↗</button>` : ''}
       </div>
       <div class="tx-amount ${tx.type}">${tx.type === 'income' ? '+' : '-'}${formatCurrency(tx.amount)}</div>
       <div class="tx-actions">
@@ -548,6 +563,7 @@ function renderTimelineList(listId, items, emptyId) {
   });
   container.querySelectorAll('.tx-btn-edit').forEach(btn => btn.addEventListener('click', () => openEditModal(btn.dataset.id)));
   container.querySelectorAll('.tx-btn-delete').forEach(btn => btn.addEventListener('click', () => openDeleteModal(btn.dataset.id)));
+  container.querySelectorAll('.tx-image-btn, .tx-slip-link').forEach(btn => btn.addEventListener('click', () => openSlipLightbox(btn.dataset.id)));
 }
 
 // ========================
@@ -760,7 +776,7 @@ async function handleFormSubmit(e) {
     const txData = {
       type: currentType, amount, description, category, date,
       createdAt: new Date().toISOString(),
-      imageUrl: '',
+      imageData: pendingImageStored || '',
     };
 
     if (wasEditing) {
@@ -802,13 +818,33 @@ function updateCurrentDate() {
 // Slip Scanning (Gemini 2.5 Flash via Vercel)
 // ========================
 function clearPendingImage() {
-  pendingImageData = null;
-  pendingImageMime = null;
+  pendingImageData   = null;
+  pendingImageMime   = null;
+  pendingImageStored = null;
   const previewContainer = document.getElementById('image-preview-container');
   const previewImg       = document.getElementById('image-preview');
   previewImg.src = '';
   previewContainer.style.display = 'none';
   document.getElementById('input-slip').value = '';
+}
+
+function compressImage(base64, mime, maxPx = 800, quality = 0.72) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width: w, height: h } = img;
+      if (w > maxPx || h > maxPx) {
+        if (w > h) { h = Math.round(h * maxPx / w); w = maxPx; }
+        else       { w = Math.round(w * maxPx / h); h = maxPx; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(`data:${mime};base64,${base64}`);
+    img.src = `data:${mime};base64,${base64}`;
+  });
 }
 
 async function handleSlipScan(e) {
@@ -837,10 +873,11 @@ async function handleSlipScan(e) {
 
     pendingImageData = base64Data;
     pendingImageMime = mimeType;
+    pendingImageStored = await compressImage(base64Data, mimeType);
 
     const previewContainer = document.getElementById('image-preview-container');
     const previewImg       = document.getElementById('image-preview');
-    previewImg.src = `data:${mimeType};base64,${base64Data}`;
+    previewImg.src = pendingImageStored;
     previewContainer.style.display = 'block';
 
     textEl.textContent = 'Gemini 2.5 AI กำลังวิเคราะห์สลิป...';
@@ -1096,6 +1133,11 @@ function init() {
 
   // Sign out
   document.getElementById('btn-signout').addEventListener('click', handleSignOut);
+
+  // Slip lightbox close
+  const closeLightbox = () => document.getElementById('slip-lightbox').classList.remove('active');
+  document.getElementById('slip-lightbox-close').addEventListener('click', closeLightbox);
+  document.getElementById('slip-lightbox-backdrop').addEventListener('click', closeLightbox);
 
   // Slip Scan
   document.getElementById('btn-scan').addEventListener('click', () => document.getElementById('input-slip').click());

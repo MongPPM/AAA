@@ -366,6 +366,14 @@ a { color: var(--indigo); text-decoration: none; }
 .tx-btn-edit:hover { background: var(--indigo-light); color: var(--indigo); }
 .tx-btn-delete:hover { background: var(--red-light); color: var(--red); }
 .tx-image-link { font-size: 12px; color: var(--indigo); }
+.tx-image-btn {
+  display: inline-flex; align-items: center;
+  font-size: 14px; padding: 0 3px;
+  border-radius: 4px;
+  transition: background var(--transition);
+  vertical-align: middle;
+}
+.tx-image-btn:hover { background: var(--indigo-light); }
 
 /* ========================
    Filter
@@ -444,12 +452,51 @@ a { color: var(--indigo); text-decoration: none; }
   display: inline-flex; align-items: center; gap: 4px;
   font-size: 11px; color: var(--indigo);
   margin-top: 4px;
+  background: none; font-family: inherit;
+  transition: opacity var(--transition);
 }
+.tx-slip-link:hover { opacity: 0.75; }
 .tx-slip-thumb {
   width: 36px; height: 36px;
   object-fit: cover; border-radius: 4px;
   border: 1px solid var(--border);
 }
+
+/* ========================
+   Slip Lightbox
+   ======================== */
+.slip-lightbox {
+  display: none;
+  position: fixed; inset: 0; z-index: 2000;
+  align-items: center; justify-content: center;
+}
+.slip-lightbox.active { display: flex; }
+.slip-lightbox-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
+}
+.slip-lightbox-content {
+  position: relative; z-index: 1;
+  max-width: 90vw; max-height: 90vh;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+}
+.slip-lightbox-content img {
+  display: block;
+  max-width: 90vw; max-height: 85vh;
+  object-fit: contain;
+}
+.slip-lightbox-close {
+  position: absolute; top: 10px; right: 10px; z-index: 2;
+  width: 32px; height: 32px;
+  background: rgba(0,0,0,0.5); color: #fff;
+  border-radius: 50%; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--transition);
+}
+.slip-lightbox-close:hover { background: rgba(0,0,0,0.8); }
 
 /* ========================
    Upgrade Notice (Trends)
