@@ -41,6 +41,7 @@ let pendingDeleteId = null;
 let editingId    = null;
 let currentView  = 'dashboard';
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyNgQU1KtcgV2wVWcGslNGkq6_o3IjjzSCs9Jy0SSAsOxeP6xqEoXldWf4EJD5GdB_k/exec';
+const VISION_API_KEY  = 'AIzaSyCAvi-wgDdnF6vOJXnnDbwXfWFrYwaKIpE';
 let apiUrl = DEFAULT_API_URL;
 let cutoffDay = parseInt(localStorage.getItem('mf_cutoff_day')) || 1;
 let pendingImageData = null;
@@ -671,8 +672,32 @@ async function handleSlipScan(e) {
     textEl.textContent = 'Gemini 2.5 AI กำลังวิเคราะห์สลิป...';
     barEl.style.setProperty('--progress', '40%');
 
-    // Call backend — Gemini API key stays server-side only
-    const data = await apiFetch('scanSlip', { base64Data, mimeType });
+    // Call Gemini directly from frontend (no GAS redeploy needed)
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${VISION_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: 'Extract transaction details from this Thai bank slip image. Return ONLY JSON format: {"amount": 123.45, "description": "Name of recipient"}. If amount not found, return {"amount": null, "description": ""}. Focus on the total transfer amount.' },
+              { inline_data: { mime_type: mimeType, data: base64Data } }
+            ]
+          }]
+        })
+      }
+    );
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error?.message || `Gemini API Error ${response.status}`);
+    }
+    const result = await response.json();
+    const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!aiText) throw new Error('AI ส่งข้อมูลกลับมาผิดรูปแบบ');
+    const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('AI ไม่พบ JSON ในคำตอบ');
+    const data = JSON.parse(jsonMatch[0]);
     barEl.style.setProperty('--progress', '90%');
 
     if (data.amount) {
