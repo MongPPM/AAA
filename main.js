@@ -1,5 +1,5 @@
 import { auth, db, googleProvider } from './firebase.js';
-import { APP_VERSION } from './version.js';
+import { APP_VERSION, CHANGELOG } from './version.js';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
@@ -1077,6 +1077,30 @@ async function handleUpgradePayment() {
 // ========================
 // Init
 // ========================
+function openChangelog() {
+  const body = document.getElementById('changelog-body');
+  const typeIcon = { new: '✨', fix: '🐛', improve: '⚡' };
+  const typeLabel = { new: 'ใหม่', fix: 'แก้ไข', improve: 'ปรับปรุง' };
+  body.innerHTML = CHANGELOG.map(v => `
+    <div class="cl-version">
+      <div class="cl-version-header">
+        <span class="cl-version-num">v${v.version}</span>
+        <span class="cl-version-label">${v.label}</span>
+        <span class="cl-version-date">${new Date(v.date).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+      </div>
+      <ul class="cl-list">
+        ${v.changes.map(c => `
+          <li class="cl-item cl-${c.type}">
+            <span class="cl-icon">${typeIcon[c.type] || '•'}</span>
+            <span class="cl-tag ${c.type}">${typeLabel[c.type] || c.type}</span>
+            <span class="cl-text">${c.text}</span>
+          </li>`).join('')}
+      </ul>
+    </div>`).join('');
+  document.getElementById('changelog-overlay').style.display = 'flex';
+  if (window.innerWidth <= 900) document.getElementById('sidebar').classList.remove('open');
+}
+
 function init() {
   updateCurrentDate();
   populateCategorySelect('income');
@@ -1209,6 +1233,15 @@ function init() {
 
   // Sign out
   document.getElementById('btn-signout').addEventListener('click', handleSignOut);
+
+  // Changelog
+  document.getElementById('btn-changelog').addEventListener('click', openChangelog);
+  document.getElementById('changelog-close').addEventListener('click', () => {
+    document.getElementById('changelog-overlay').style.display = 'none';
+  });
+  document.getElementById('changelog-overlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
+  });
 
   // Slip lightbox close
   const closeLightbox = () => document.getElementById('slip-lightbox').classList.remove('active');

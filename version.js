@@ -1,22 +1,36 @@
-export const APP_VERSION = '1.0.0';
-
-// Changelog — บันทึกการเปลี่ยนแปลงทุก version
-// รูปแบบ: MAJOR.MINOR.PATCH
-//   PATCH (1.0.x) — แก้ bug, ปรับ UI เล็กน้อย
-//   MAJOR (x.0.0) — อัปเดตระบบใหญ่
+export const APP_VERSION = '1.1.0';
 
 export const CHANGELOG = [
   {
+    version: '1.1.0',
+    date: '2026-05-18',
+    label: 'ฟีเจอร์ใหม่ + ปรับปรุง',
+    changes: [
+      { type: 'new',  text: 'มุมมอง "แยก" ในรายการทั้งหมด — รายรับซ้าย รายจ่ายขวา พร้อมตาชั่งบอกว่าฝั่งไหนหนักกว่า' },
+      { type: 'new',  text: 'Timeline วันต่อวัน — รายการจัดกลุ่มตามวันที่ อ่านง่ายขึ้น' },
+      { type: 'new',  text: 'สลับดู "รอบบิล" กับ "ทั้งหมด" ในหน้ารายการ' },
+      { type: 'new',  text: 'Pro — เก็บรูปสลิปไว้ 3 เดือน คลิก 📷 ดูภาพย้อนหลังได้ทุกเมื่อ' },
+      { type: 'new',  text: 'แนวโน้มรายวัน — ช่วงวันที่แสดงตามรอบบิลที่ตั้งไว้ (วันตัดรอบ 1–31)' },
+      { type: 'new',  text: 'แสดงจำนวนสแกนที่เหลือวันนี้ — เปลี่ยนสีเตือนเมื่อใกล้หมด' },
+      { type: 'fix',  text: 'แก้ข้อมูลไม่บันทึก เพราะแอปต่อ Firestore ผิด database' },
+      { type: 'fix',  text: 'แก้หน้า login ไม่โชว์หลัง deploy ครั้งแรก' },
+      { type: 'fix',  text: 'แก้เพิ่มรายการต่อเนื่องไม่ได้ — หน้าจอค้างทำให้พิมพ์ไม่ได้' },
+      { type: 'fix',  text: 'แก้จำนวนสแกนที่เหลือแสดงผิดหลังรีเฟรชหน้า' },
+      { type: 'improve', text: 'เปิดแอปครั้งถัดไปข้อมูลโชว์เกือบทันที — ไม่ต้องรอโหลดนาน' },
+      { type: 'improve', text: 'กราฟแนวโน้มไม่แสดงแท่งว่างของวันในอนาคต' },
+    ],
+  },
+  {
     version: '1.0.0',
     date: '2026-05-17',
+    label: 'เปิดตัว',
     changes: [
-      'ย้ายจาก Google Sheets ไปใช้ Firebase Firestore',
-      'เพิ่ม Google Sign-in (ข้อมูลแยกต่อ user)',
-      'UI ใหม่ทั้งหมด — light theme, clean layout',
-      'สแกนสลิปด้วย Gemini 2.5 Flash AI',
-      'จำกัดสแกนฟรี 10 ครั้ง/เดือน',
-      'ระบบ Pro plan (พร้อม Omise payment)',
-      'แนวโน้มรายวันตามรอบบิลที่ตั้งไว้',
+      { type: 'new', text: 'Login ด้วย Google — ข้อมูลแยกต่อคน sync ทุกอุปกรณ์' },
+      { type: 'new', text: 'UI ใหม่ทั้งหมด — light theme, clean layout' },
+      { type: 'new', text: 'สแกนสลิปด้วย Gemini 2.5 Flash AI' },
+      { type: 'new', text: 'Free plan — สแกนสลิปฟรี 5 ครั้ง/วัน' },
+      { type: 'new', text: 'Pro plan — สแกนไม่จำกัด + เก็บรูปสลิป' },
+      { type: 'new', text: 'แนวโน้มรายวันตามรอบบิลที่ตั้งไว้' },
     ],
   },
 ];

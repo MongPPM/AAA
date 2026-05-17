@@ -98,8 +98,9 @@
           <button class="btn-upgrade" id="btn-upgrade">⭐ อัปเกรดเป็น Pro</button>
           <!-- Clear & Signout -->
           <button class="btn-dev-toggle" id="btn-dev-toggle" style="display:none"></button>
-          <button class="btn-clear-all" id="btn-clear-all"><span>🗑️</span> ล้างข้อมูล</button>
-          <button class="btn-signout"   id="btn-signout">  <span>🚪</span> ออกจากระบบ</button>
+          <button class="btn-clear-all"  id="btn-clear-all">  <span>🗑️</span> ล้างข้อมูล</button>
+          <button class="btn-changelog"  id="btn-changelog">  <span>🆕</span> อัปเดต</button>
+          <button class="btn-signout"    id="btn-signout">    <span>🚪</span> ออกจากระบบ</button>
           <div class="app-version" id="app-version"></div>
         </div>
       </aside>
@@ -432,6 +433,17 @@
 
     <!-- Toast -->
     <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <!-- Changelog Modal -->
+    <div class="modal-overlay" id="changelog-overlay" style="display:none">
+      <div class="modal-box changelog-box">
+        <div class="modal-header">
+          <h2 class="modal-title">ประวัติอัปเดต</h2>
+          <button class="modal-close" id="changelog-close">✕</button>
+        </div>
+        <div class="changelog-body" id="changelog-body"></div>
+      </div>
+    </div>
 
     <!-- Slip Lightbox -->
     <div class="slip-lightbox" id="slip-lightbox">
