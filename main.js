@@ -665,11 +665,10 @@ async function handleFormSubmit(e) {
     showToast('กรุณากรอกข้อมูลให้ครบถ้วน', 'error'); return;
   }
 
-  const wasEditing  = !!editingId;
-  const isContinue  = document.getElementById('check-continue').checked;
-  const submitBtn   = document.getElementById('btn-submit');
+  const wasEditing = !!editingId;
+  const isContinue = document.getElementById('check-continue').checked;
+  const submitBtn  = document.getElementById('btn-submit');
   submitBtn.disabled = true;
-  showLoading('กำลังบันทึก...');
 
   try {
     const txData = {
@@ -680,28 +679,27 @@ async function handleFormSubmit(e) {
 
     if (wasEditing) {
       await fsUpdate(editingId, txData);
-      showToast('✅ บันทึกการแก้ไขแล้ว');
       editingId = null;
+      showToast('✅ บันทึกการแก้ไขแล้ว');
+      closeModal('modal-overlay');
     } else {
       await fsAdd(txData);
       showToast('✅ บันทึกแล้ว');
-    }
-
-    if (wasEditing || !isContinue) {
-      closeModal('modal-overlay');
-    } else {
-      document.getElementById('input-amount').value = '';
-      document.getElementById('input-description').value = '';
-      clearPendingImage();
-      const now = new Date();
-      document.getElementById('input-date').value = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-      document.getElementById('input-amount').focus();
+      if (isContinue) {
+        document.getElementById('input-amount').value = '';
+        document.getElementById('input-description').value = '';
+        clearPendingImage();
+        const now = new Date();
+        document.getElementById('input-date').value = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        document.getElementById('input-amount').focus();
+      } else {
+        closeModal('modal-overlay');
+      }
     }
   } catch (err) {
     showToast('❌ ' + err.message, 'error');
   } finally {
     submitBtn.disabled = false;
-    hideLoading();
   }
 }
 
