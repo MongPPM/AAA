@@ -1064,6 +1064,8 @@ a { color: var(--indigo); text-decoration: none; }
   text-align: center;
   margin-top: 6px; min-height: 18px;
 }
+.scan-info-row.pro       { color: #b45309; font-weight: 500; }
+.scan-info-row.exhausted { color: var(--red); font-weight: 600; }
 
 /* ========================
    Upgrade Modal

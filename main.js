@@ -42,7 +42,7 @@ const CAT_MAP = new Map(
 // Omise publishable key (public — safe to expose in frontend)
 // ⚠️ TODO: Replace with your actual key from https://dashboard.omise.co → Keys
 const OMISE_PUBLIC_KEY = 'pkey_test_YOUR_OMISE_PUBLIC_KEY';
-const FREE_SCAN_LIMIT = 10;
+const FREE_SCAN_LIMIT = 5; // per day
 
 // Dev/admin accounts — can toggle Free/Pro for testing
 const DEV_EMAILS = ['nunmongss@gmail.com'];
@@ -67,7 +67,7 @@ let dailyChartInstance = null;
 let currentUser      = null;
 let userPlan         = 'free'; // 'free' | 'pro'
 let scanCount        = 0;
-let scanMonth        = '';
+let scanDate         = ''; // YYYY-MM-DD daily tracking
 let unsubscribeSnap  = null;
 
 // ========================
@@ -149,8 +149,8 @@ function setupRealtimeListener() {
   const q = query(txCol(), orderBy('date', 'desc'));
   setSyncStatus('syncing');
   unsubscribeSnap = onSnapshot(q, (snapshot) => {
-    console.log('[Firestore] snapshot docs:', snapshot.docs.length);
     transactions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    cleanupOldImages();
     saveLocalCache();
     renderAll();
     setSyncStatus('online');
@@ -160,6 +160,18 @@ function setupRealtimeListener() {
     setSyncStatus('offline');
     hideLoading();
     showToast('⚠️ Firestore error: ' + err.message, 'error', 8000);
+  });
+}
+
+// Pro: delete imageData older than 90 days (passive cleanup on each load)
+function cleanupOldImages() {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 90);
+  transactions.forEach(t => {
+    if (t.imageData && new Date(t.createdAt) < cutoff) {
+      t.imageData = '';
+      fsUpdate(t.id, { imageData: '' }).catch(() => {});
+    }
   });
 }
 
@@ -184,7 +196,7 @@ async function loadUserMeta() {
       }
       userPlan  = data.plan || 'free';
       scanCount = data.scan_count || 0;
-      scanMonth = data.scan_month || '';
+      scanDate  = data.scan_date  || '';
     }
     updatePlanUI();
   } catch (err) {
@@ -210,11 +222,14 @@ function updatePlanUI() {
   const scanInfo = document.getElementById('scan-info');
   if (scanInfo) {
     if (userPlan === 'pro') {
-      scanInfo.textContent = 'สแกนสลิปได้ไม่จำกัด ⭐';
+      scanInfo.textContent = 'Pro — สแกนสลิปได้ไม่จำกัด ⭐';
+      scanInfo.className = 'scan-info-row pro';
     } else {
-      const currentMonth = new Date().toISOString().slice(0, 7);
-      const used = scanMonth === currentMonth ? scanCount : 0;
-      scanInfo.textContent = `สแกนฟรีเหลือ ${FREE_SCAN_LIMIT - used}/${FREE_SCAN_LIMIT} ครั้งเดือนนี้`;
+      const today = new Date().toLocaleDateString('sv'); // YYYY-MM-DD local
+      const used  = scanDate === today ? scanCount : 0;
+      const left  = FREE_SCAN_LIMIT - used;
+      scanInfo.textContent = `Free — เหลือ ${left}/${FREE_SCAN_LIMIT} ครั้งวันนี้`;
+      scanInfo.className   = left > 0 ? 'scan-info-row' : 'scan-info-row exhausted';
     }
   }
 }
@@ -243,23 +258,22 @@ async function fsDelete(id) {
 async function checkAndIncrementScan() {
   if (userPlan === 'pro') return true;
 
-  const currentMonth = new Date().toISOString().slice(0, 7);
-  // Fetch fresh count from Firestore to prevent race conditions
-  const snap = await getDoc(metaRef());
-  const meta = snap.exists() ? snap.data() : {};
+  const today = new Date().toLocaleDateString('sv'); // YYYY-MM-DD local
+  const snap  = await getDoc(metaRef());
+  const meta  = snap.exists() ? snap.data() : {};
 
-  const sameMonth = meta.scan_month === currentMonth;
-  const count = sameMonth ? (meta.scan_count || 0) : 0;
+  const sameDay = meta.scan_date === today;
+  const count   = sameDay ? (meta.scan_count || 0) : 0;
 
   if (count >= FREE_SCAN_LIMIT) {
-    openUpgradeModal('คุณใช้ครบ ' + FREE_SCAN_LIMIT + ' ครั้งสแกนฟรีแล้ว\nอัปเกรดเป็น Pro เพื่อสแกนไม่จำกัด');
+    openUpgradeModal(`ใช้ครบ ${FREE_SCAN_LIMIT} ครั้งสแกนฟรีวันนี้แล้ว\nอัปเกรดเป็น Pro เพื่อสแกนไม่จำกัด`);
     return false;
   }
 
   const newCount = count + 1;
-  await fsSaveMeta({ scan_count: newCount, scan_month: currentMonth });
+  await fsSaveMeta({ scan_count: newCount, scan_date: today });
   scanCount = newCount;
-  scanMonth = currentMonth;
+  scanDate  = today;
   updatePlanUI();
   return true;
 }
@@ -776,7 +790,7 @@ async function handleFormSubmit(e) {
     const txData = {
       type: currentType, amount, description, category, date,
       createdAt: new Date().toISOString(),
-      imageData: pendingImageStored || '',
+      imageData: (userPlan === 'pro' && pendingImageStored) ? pendingImageStored : '',
     };
 
     if (wasEditing) {
@@ -873,11 +887,14 @@ async function handleSlipScan(e) {
 
     pendingImageData = base64Data;
     pendingImageMime = mimeType;
-    pendingImageStored = await compressImage(base64Data, mimeType);
+    // Pro: compress to viewable quality; Free: no storage
+    pendingImageStored = userPlan === 'pro'
+      ? await compressImage(base64Data, mimeType, 1200, 0.82)
+      : null;
 
     const previewContainer = document.getElementById('image-preview-container');
     const previewImg       = document.getElementById('image-preview');
-    previewImg.src = pendingImageStored;
+    previewImg.src = `data:${mimeType};base64,${base64Data}`; // always show preview locally
     previewContainer.style.display = 'block';
 
     textEl.textContent = 'Gemini 2.5 AI กำลังวิเคราะห์สลิป...';
