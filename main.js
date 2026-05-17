@@ -139,16 +139,17 @@ function setupRealtimeListener() {
   const q = query(txCol(), orderBy('date', 'desc'));
   setSyncStatus('syncing');
   unsubscribeSnap = onSnapshot(q, (snapshot) => {
+    console.log('[Firestore] snapshot docs:', snapshot.docs.length);
     transactions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     saveLocalCache();
     renderAll();
     setSyncStatus('online');
     hideLoading();
   }, (err) => {
-    console.error('Firestore snapshot error:', err);
+    console.error('[Firestore] snapshot error:', err);
     setSyncStatus('offline');
     hideLoading();
-    if (transactions.length === 0) showToast('⚠️ โหลดข้อมูลไม่สำเร็จ', 'error');
+    showToast('⚠️ Firestore error: ' + err.message, 'error', 8000);
   });
 }
 
