@@ -74,7 +74,7 @@ let unsubscribeSnap  = null;
 // Firestore Helpers
 // ========================
 const txCol   = () => collection(db, 'users', currentUser.uid, 'transactions');
-const metaRef = () => doc(db, 'users', currentUser.uid, 'meta');
+const metaRef = () => doc(db, 'users', currentUser.uid); // users/{uid} = 2 segments (valid)
 
 // ========================
 // Auth State Driver
