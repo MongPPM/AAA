@@ -954,7 +954,7 @@ async function handleSlipScan(e) {
     previewImg.src = `data:${mimeType};base64,${base64Data}`; // always show preview locally
     previewContainer.style.display = 'block';
 
-    textEl.textContent = 'Gemini 2.5 AI กำลังวิเคราะห์สลิป...';
+    textEl.textContent = 'กำลังวิเคราะห์...';
     barEl.style.setProperty('--progress', '40%');
 
     const scanRes = await fetch('/api/scan', {
