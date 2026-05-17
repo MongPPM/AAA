@@ -164,11 +164,20 @@ function isInCurrentCycle(dateStr) {
   if (isNaN(txDate.getTime())) return false;
   
   const now = new Date();
-  let startOfCycle = new Date(now.getFullYear(), now.getMonth(), cutoffDay);
+  // Clamp cutoffDay to the actual last day of a given month
+  const clampedDate = (year, month, day) => {
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    return new Date(year, month, Math.min(day, lastDay));
+  };
+
+  let yr = now.getFullYear(), mo = now.getMonth();
+  let startOfCycle = clampedDate(yr, mo, cutoffDay);
   if (now.getDate() < cutoffDay) {
-    startOfCycle.setMonth(startOfCycle.getMonth() - 1);
+    const prevMo = mo - 1 < 0 ? 11 : mo - 1;
+    const prevYr = mo - 1 < 0 ? yr - 1 : yr;
+    startOfCycle = clampedDate(prevYr, prevMo, cutoffDay);
   }
-  
+
   let endOfCycle = new Date(startOfCycle);
   endOfCycle.setMonth(endOfCycle.getMonth() + 1);
   
@@ -183,7 +192,8 @@ function getTotals() {
       else expense += Number(t.amount);
     }
   });
-  return { income, expense, balance: income - expense };
+  const round2 = n => Math.round(n * 100) / 100;
+  return { income: round2(income), expense: round2(expense), balance: round2(income - expense) };
 }
 
 // ========================
@@ -333,7 +343,7 @@ function renderDailyChart() {
   for (let i = 29; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(now.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     labels.push(d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
     
     // Group transactions for this day
@@ -596,7 +606,7 @@ function updateCurrentDate() {
 }
 
 // ========================
-// Slip Scanning (Gemini 1.5 Flash AI)
+// Slip Scanning (Gemini 2.5 Flash AI)
 // ========================
 function clearPendingImage() {
   pendingImageData = null;
@@ -665,7 +675,8 @@ async function handleSlipScan(e) {
       throw new Error('AI ไม่พบคำตอบ (Candidate is missing)');
     }
 
-    let aiText = result.candidates[0].content.parts[0].text;
+    let aiText = result.candidates[0]?.content?.parts?.[0]?.text;
+    if (!aiText) throw new Error('AI ส่งข้อมูลกลับมาผิดรูปแบบ (Empty content)');
     console.log('Gemini output:', aiText);
 
     // More robust JSON extraction
@@ -679,7 +690,7 @@ async function handleSlipScan(e) {
       if (data.description) {
         document.getElementById('input-description').value = data.description;
       }
-      showToast('✅ สแกนสำเร็จโดย Gemini 2.0');
+      showToast('✅ สแกนสำเร็จโดย Gemini 2.5 Flash');
     } else {
       showToast('⚠️ AI ไม่พบยอดเงินในสลิปนี้', 'error');
     }

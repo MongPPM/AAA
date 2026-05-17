@@ -1230,11 +1230,19 @@ function isInCurrentCycle(dateStr) {
   if (isNaN(txDate.getTime())) return false;
   
   const now = new Date();
-  let startOfCycle = new Date(now.getFullYear(), now.getMonth(), cutoffDay);
+  const clampedDate = (year, month, day) => {
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    return new Date(year, month, Math.min(day, lastDay));
+  };
+
+  let yr = now.getFullYear(), mo = now.getMonth();
+  let startOfCycle = clampedDate(yr, mo, cutoffDay);
   if (now.getDate() < cutoffDay) {
-    startOfCycle.setMonth(startOfCycle.getMonth() - 1);
+    const prevMo = mo - 1 < 0 ? 11 : mo - 1;
+    const prevYr = mo - 1 < 0 ? yr - 1 : yr;
+    startOfCycle = clampedDate(prevYr, prevMo, cutoffDay);
   }
-  
+
   let endOfCycle = new Date(startOfCycle);
   endOfCycle.setMonth(endOfCycle.getMonth() + 1);
   
@@ -1249,7 +1257,8 @@ function getTotals() {
       else expense += Number(t.amount);
     }
   });
-  return { income, expense, balance: income - expense };
+  const round2 = n => Math.round(n * 100) / 100;
+  return { income: round2(income), expense: round2(expense), balance: round2(income - expense) };
 }
 
 // ========================
@@ -1398,7 +1407,7 @@ function renderDailyChart() {
   for (let i = 29; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(now.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     labels.push(d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
     
     const dayTx = transactions.filter(t => t.date.startsWith(dateStr));
@@ -1678,7 +1687,8 @@ async function handleSlipScan(e) {
     const result = await response.json();
     barEl.style.setProperty('--progress', '90%');
     
-    let aiText = result.candidates[0].content.parts[0].text;
+    let aiText = result.candidates[0]?.content?.parts?.[0]?.text;
+    if (!aiText) throw new Error('AI ส่งข้อมูลกลับมาผิดรูปแบบ (Empty content)');
     const jsonMatch = aiText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('AI format error');
     
