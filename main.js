@@ -57,7 +57,8 @@ let pendingDeleteId = null;
 let editingId    = null;
 let currentView  = 'dashboard';
 let cutoffDay    = parseInt(localStorage.getItem('mf_cutoff_day')) || 1;
-let txViewMode   = 'list'; // 'list' | 'split'
+let txViewMode   = 'list';  // 'list' | 'split'
+let txRangeMode  = 'cycle'; // 'all' | 'cycle'
 let pendingImageData     = null;
 let pendingImageMime     = null;
 let pendingImageStored   = null; // compressed base64 for saving
@@ -547,18 +548,30 @@ function updateBalanceScale(incomeList, expenseList) {
   }
 }
 
+function setTxRangeMode(mode) {
+  txRangeMode = mode;
+  document.getElementById('btn-range-all').classList.toggle('active',   mode === 'all');
+  document.getElementById('btn-range-cycle').classList.toggle('active', mode === 'cycle');
+  renderAllTransactions();
+}
+
+function applyRangeFilter(list) {
+  if (txRangeMode !== 'cycle') return list;
+  return list.filter(t => isInCurrentCycle(t.date));
+}
+
 function renderAllTransactions() {
   const filterCat = document.getElementById('filter-category').value;
   if (txViewMode === 'split') {
-    let income  = transactions.filter(t => t.type === 'income').sort((a, b) => new Date(b.date) - new Date(a.date));
-    let expense = transactions.filter(t => t.type === 'expense').sort((a, b) => new Date(b.date) - new Date(a.date));
+    let income  = applyRangeFilter(transactions.filter(t => t.type === 'income')).sort((a, b) => new Date(b.date) - new Date(a.date));
+    let expense = applyRangeFilter(transactions.filter(t => t.type === 'expense')).sort((a, b) => new Date(b.date) - new Date(a.date));
     if (filterCat !== 'all') { income = income.filter(t => t.category === filterCat); expense = expense.filter(t => t.category === filterCat); }
     updateBalanceScale(income, expense);
     renderTimelineList('split-income-list',  income,  'empty-split-income');
     renderTimelineList('split-expense-list', expense, 'empty-split-expense');
   } else {
     const filterType = document.getElementById('filter-type').value;
-    let filtered = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+    let filtered = applyRangeFilter([...transactions]).sort((a, b) => new Date(b.date) - new Date(a.date));
     if (filterType !== 'all') filtered = filtered.filter(t => t.type === filterType);
     if (filterCat  !== 'all') filtered = filtered.filter(t => t.category === filterCat);
     renderTimelineList('all-list', filtered, 'empty-all');
@@ -1181,8 +1194,10 @@ function init() {
   document.getElementById('btn-pay-omise').addEventListener('click', handleUpgradePayment);
 
   // Transaction view mode toggle
-  document.getElementById('btn-view-list')?.addEventListener('click', () => setTxViewMode('list'));
-  document.getElementById('btn-view-split')?.addEventListener('click', () => setTxViewMode('split'));
+  document.getElementById('btn-view-list')?.addEventListener('click',   () => setTxViewMode('list'));
+  document.getElementById('btn-view-split')?.addEventListener('click',  () => setTxViewMode('split'));
+  document.getElementById('btn-range-all')?.addEventListener('click',   () => setTxRangeMode('all'));
+  document.getElementById('btn-range-cycle')?.addEventListener('click', () => setTxRangeMode('cycle'));
 
   // Dev toggle (hidden for non-dev users)
   const devToggleBtn = document.getElementById('btn-dev-toggle');
