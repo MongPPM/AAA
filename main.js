@@ -671,32 +671,17 @@ async function handleSlipScan(e) {
     textEl.textContent = 'Gemini 2.5 AI กำลังวิเคราะห์สลิป...';
     barEl.style.setProperty('--progress', '40%');
 
-    const geminiKey = localStorage.getItem('mf_gemini_key');
-    if (!geminiKey) throw new Error('ยังไม่ได้ตั้งค่า Gemini API Key — ไปที่ ⚙️ ตั้งค่า แล้วใส่ key');
-
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [
-            { text: 'Extract transaction details from this Thai bank slip image. Return ONLY JSON: {"amount": 123.45, "description": "recipient name"}. If no amount found return {"amount": null, "description": ""}.' },
-            { inline_data: { mime_type: mimeType, data: base64Data } }
-          ]}]
-        })
-      }
-    );
-    if (!geminiRes.ok) {
-      const errData = await geminiRes.json().catch(() => ({}));
-      throw new Error(errData.error?.message || `Gemini API Error ${geminiRes.status}`);
+    // Call Vercel serverless function — API key lives in Vercel env vars, never in browser
+    const scanRes = await fetch('/api/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base64Data, mimeType }),
+    });
+    if (!scanRes.ok) {
+      const errData = await scanRes.json().catch(() => ({}));
+      throw new Error(errData.error || `Server Error ${scanRes.status}`);
     }
-    const geminiResult = await geminiRes.json();
-    const aiText = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!aiText) throw new Error('AI ส่งข้อมูลกลับมาผิดรูปแบบ');
-    const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('AI ไม่พบ JSON ในคำตอบ');
-    const data = JSON.parse(jsonMatch[0]);
+    const data = await scanRes.json();
     barEl.style.setProperty('--progress', '90%');
 
     if (data.amount) {
@@ -714,14 +699,7 @@ async function handleSlipScan(e) {
     
   } catch (err) {
     console.error('Gemini scan error:', err);
-    // If key is rejected/revoked, clear it and show the key panel again
-    if (err.message.includes('API key') || err.message.includes('PERMISSION_DENIED') || err.message.includes('leaked')) {
-      localStorage.removeItem('mf_gemini_key');
-      document.getElementById('gemini-key-panel').style.display = 'block';
-      showToast('⚠️ API Key ไม่ถูกต้อง กรุณาใส่ key ใหม่', 'error', 6000);
-    } else {
-      showToast('⚠️ สแกนไม่ได้: ' + err.message + ' — รูปยังแนบอยู่', 'error', 6000);
-    }
+    showToast('⚠️ สแกนไม่ได้: ' + err.message + ' — รูปยังแนบอยู่', 'error', 6000);
   } finally {
     setTimeout(() => progressEl.classList.remove('active'), 500);
   }
@@ -860,24 +838,8 @@ function init() {
     }
   });
 
-  // Slip Scan — show inline key panel if no key saved yet
-  document.getElementById('btn-scan').addEventListener('click', () => {
-    if (!localStorage.getItem('mf_gemini_key')) {
-      const panel = document.getElementById('gemini-key-panel');
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-      if (panel.style.display === 'block') document.getElementById('inline-gemini-key').focus();
-      return;
-    }
-    document.getElementById('input-slip').click();
-  });
-  document.getElementById('btn-save-gemini-key').addEventListener('click', () => {
-    const key = document.getElementById('inline-gemini-key').value.trim();
-    if (!key.startsWith('AIza')) { showToast('Key ไม่ถูกต้อง ต้องขึ้นต้นด้วย AIza', 'error'); return; }
-    localStorage.setItem('mf_gemini_key', key);
-    document.getElementById('gemini-key-panel').style.display = 'none';
-    document.getElementById('inline-gemini-key').value = '';
-    document.getElementById('input-slip').click();
-  });
+  // Slip Scan
+  document.getElementById('btn-scan').addEventListener('click', () => document.getElementById('input-slip').click());
   document.getElementById('input-slip').addEventListener('change', handleSlipScan);
 
 
