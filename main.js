@@ -628,16 +628,23 @@ function renderDailyChart() {
   let start, end;
   const noticeEl = document.getElementById('trends-free-notice');
   const titleEl  = document.getElementById('trends-title');
+  const today = new Date(); today.setHours(23, 59, 59, 999);
   if (userPlan === 'pro') {
     const cycle = getCycleRange();
-    start = cycle.start; end = cycle.end;
+    start = cycle.start;
+    // Cap at today — don't show future empty bars
+    end = cycle.end > today ? today : cycle.end;
     if (noticeEl) noticeEl.style.display = 'none';
-    if (titleEl) titleEl.textContent = 'แนวโน้มรายวัน (รอบบิลปัจจุบัน)';
+    const startLabel = start.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+    const endLabel   = end.toLocaleDateString('th-TH',   { day: 'numeric', month: 'short' });
+    if (titleEl) titleEl.textContent = `แนวโน้มรายวัน (${startLabel} – ${endLabel})`;
   } else {
-    end   = new Date(); end.setHours(23, 59, 59, 999);
+    end   = new Date(today);
     start = new Date(end); start.setDate(start.getDate() - 29); start.setHours(0, 0, 0, 0);
     if (noticeEl) noticeEl.style.display = '';
-    if (titleEl) titleEl.textContent = 'แนวโน้มรายวัน (30 วันล่าสุด)';
+    const startLabel = start.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+    const endLabel   = end.toLocaleDateString('th-TH',   { day: 'numeric', month: 'short' });
+    if (titleEl) titleEl.textContent = `แนวโน้มรายวัน (${startLabel} – ${endLabel})`;
   }
 
   const labels = [], incomeData = [], expenseData = [];
