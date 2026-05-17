@@ -77,6 +77,15 @@ const metaRef = () => doc(db, 'users', currentUser.uid, 'meta');
 // ========================
 // Auth State Driver
 // ========================
+
+// Optimistic UI: if cache exists, show app immediately while auth verifies
+const hasCache = transactions.length > 0;
+if (hasCache) {
+  showApp();
+  setSyncStatus('syncing');
+  renderAll();
+}
+
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
@@ -84,7 +93,6 @@ onAuthStateChanged(auth, (user) => {
     updateUserProfile();
     setSyncStatus('syncing');
     if (transactions.length > 0) renderAll();
-    // No full-screen overlay — sync badge shows status instead
     loadUserMeta();
     setupRealtimeListener();
   } else {
