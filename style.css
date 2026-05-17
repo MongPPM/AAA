@@ -119,7 +119,18 @@ a { text-decoration: none; color: inherit; }
   transition: transform var(--transition);
 }
 
-.sidebar-header { margin-bottom: 32px; padding: 0 8px; }
+.sidebar-header {
+  margin-bottom: 20px;
+  padding: 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sidebar-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 
 .logo {
   display: flex; align-items: center; gap: 12px;
@@ -753,7 +764,7 @@ a { text-decoration: none; color: inherit; }
 .settings-btn {
   background: transparent; border: none; cursor: pointer;
   font-size: 18px; color: var(--text-secondary); transition: transform var(--transition);
-  margin-left: 8px;
+  flex-shrink: 0;
 }
 .settings-btn:hover { transform: rotate(45deg); }
 
