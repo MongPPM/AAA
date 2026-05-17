@@ -36,7 +36,6 @@ let pendingDeleteId = null;
 let editingId    = null;
 let currentView  = 'dashboard';
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyNgQU1KtcgV2wVWcGslNGkq6_o3IjjzSCs9Jy0SSAsOxeP6xqEoXldWf4EJD5GdB_k/exec';
-const VISION_API_KEY  = 'AIzaSyCAvi-wgDdnF6vOJXnnDbwXfWFrYwaKIpE';
 let apiUrl = DEFAULT_API_URL;
 let cutoffDay = parseInt(localStorage.getItem('mf_cutoff_day')) || 1;
 let pendingImageData = null;
@@ -116,9 +115,17 @@ async function loadTransactions() {
     // Don't show full loading overlay if we already have data (silent sync)
     if (transactions.length === 0) showLoading('กำลังโหลดข้อมูล...');
     
-    const freshData = await apiFetch('getAll');
+    const [freshData, settings] = await Promise.all([
+      apiFetch('getAll'),
+      apiFetch('getSettings').catch(() => ({}))
+    ]);
     transactions = freshData;
     saveLocalCache();
+    // Apply synced settings (server wins over localStorage)
+    if (settings.cutoff_day) {
+      cutoffDay = parseInt(settings.cutoff_day) || cutoffDay;
+      localStorage.setItem('mf_cutoff_day', cutoffDay);
+    }
     setSyncStatus('online');
   } catch (err) {
     console.error(err);
@@ -293,7 +300,7 @@ function renderTransactionList(listId, items, emptyId) {
       <div class="tx-info">
         <div class="tx-desc">
           ${escapeHtml(tx.description)}
-          ${tx.imageUrl ? `<a href="${tx.imageUrl}" target="_blank" class="tx-image-link" title="ดูรูปภาพ">🖼️</a>` : ''}
+          ${tx.imageUrl && tx.imageUrl.startsWith('https://') ? `<a href="${escapeHtml(tx.imageUrl)}" target="_blank" rel="noopener noreferrer" class="tx-image-link" title="ดูรูปภาพ">🖼️</a>` : ''}
         </div>
         <div class="tx-meta">${cat.label} · ${formatDate(tx.date)}</div>
       </div>
@@ -340,19 +347,26 @@ function renderDailyChart() {
   const expenseData = [];
   
   const now = new Date();
+
+  // Build date index once O(n) instead of filtering 30 times O(30n)
+  const dateIndex = new Map();
+  transactions.forEach(t => {
+    const day = t.date ? t.date.slice(0, 10) : null;
+    if (!day) return;
+    if (!dateIndex.has(day)) dateIndex.set(day, { income: 0, expense: 0 });
+    const entry = dateIndex.get(day);
+    if (t.type === 'income') entry.income += Number(t.amount);
+    else entry.expense += Number(t.amount);
+  });
+
   for (let i = 29; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(now.getDate() - i);
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     labels.push(d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
-    
-    // Group transactions for this day
-    const dayTx = transactions.filter(t => t.date.startsWith(dateStr));
-    const income = dayTx.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
-    const expense = dayTx.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
-    
-    incomeData.push(income);
-    expenseData.push(expense);
+    const entry = dateIndex.get(dateStr) || { income: 0, expense: 0 };
+    incomeData.push(entry.income);
+    expenseData.push(entry.expense);
   }
 
   if (dailyChartInstance) {
@@ -648,42 +662,9 @@ async function handleSlipScan(e) {
     textEl.textContent = 'Gemini 2.5 AI กำลังวิเคราะห์สลิป...';
     barEl.style.setProperty('--progress', '40%');
 
-    // Call Gemini 2.5 Flash API
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${VISION_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: "Extract transaction details from this Thai bank slip image. Return ONLY JSON format: {\"amount\": 123.45, \"description\": \"Name of recipient\"}. If amount not found, return {\"amount\": null, \"description\": \"\"}. Focus on the total transfer amount." },
-            { inline_data: { mime_type: mimeType, data: base64Data } }
-          ]
-        }]
-      })
-    });
-
-    if (!response.ok) {
-      const errData = await response.json();
-      console.error('Gemini API Error:', errData);
-      throw new Error(errData.error?.message || `API Error ${response.status}`);
-    }
-
-    const result = await response.json();
+    // Call backend — Gemini API key stays server-side only
+    const data = await apiFetch('scanSlip', { base64Data, mimeType });
     barEl.style.setProperty('--progress', '90%');
-    
-    if (!result.candidates || !result.candidates[0]) {
-      throw new Error('AI ไม่พบคำตอบ (Candidate is missing)');
-    }
-
-    let aiText = result.candidates[0]?.content?.parts?.[0]?.text;
-    if (!aiText) throw new Error('AI ส่งข้อมูลกลับมาผิดรูปแบบ (Empty content)');
-    console.log('Gemini output:', aiText);
-
-    // More robust JSON extraction
-    const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('AI ส่งข้อมูลกลับมาผิดรูปแบบ (No JSON found)');
-    
-    const data = JSON.parse(jsonMatch[0]);
 
     if (data.amount) {
       document.getElementById('input-amount').value = data.amount;
@@ -823,9 +804,12 @@ function init() {
     if (day >= 1 && day <= 31) {
       cutoffDay = day;
       localStorage.setItem('mf_cutoff_day', cutoffDay);
-      showToast('บันทึกตั้งค่าแล้ว');
       closeModal('settings-modal-overlay');
       renderAll();
+      // Sync to server in background (silent — don't block UI)
+      apiFetch('saveSetting', { key: 'cutoff_day', value: cutoffDay })
+        .then(() => showToast('บันทึกตั้งค่าแล้ว (ซิงค์แล้ว)'))
+        .catch(() => showToast('บันทึกตั้งค่าในเครื่องแล้ว (ซิงค์ไม่ได้)', 'error'));
     } else {
       showToast('กรุณากรอกวันที่ระหว่าง 1-31', 'error');
     }

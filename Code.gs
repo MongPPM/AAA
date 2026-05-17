@@ -3,7 +3,12 @@
 //  วางโค้ดนี้ใน Google Apps Script แล้ว Deploy เป็น Web App
 // ============================================================
 
-// ---- Web App Interface ----
+// Gemini API key — set via File > Project Properties > Script Properties
+// Key name: GEMINI_API_KEY  (more secure than hardcoding)
+function getGeminiKey() {
+  return PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY') || '';
+}
+
 // ---- Web App Interface & API ----
 function doGet(e) {
   // If no action parameter, serve the HTML UI
@@ -45,6 +50,12 @@ function doPost(e) {
       result = clearAllTransactions();
     } else if (action === 'uploadImage') {
       result = uploadImage(body.base64Data, body.filename, body.mimeType);
+    } else if (action === 'scanSlip') {
+      result = scanSlipWithGemini(body.base64Data, body.mimeType);
+    } else if (action === 'saveSetting') {
+      result = saveSetting(body.key, body.value);
+    } else if (action === 'getSettings') {
+      result = getSettings();
     } else {
       throw new Error('Unknown action: ' + action);
     }
@@ -91,17 +102,36 @@ function getAllTransactions() {
   });
 }
 
+const VALID_TYPES = ['income', 'expense'];
+const VALID_CATEGORIES = [
+  'salary','freelance','investment','gift','other_in',
+  'food','transport','shopping','utilities','health',
+  'entertainment','education','rent','other_ex'
+];
+
+function validateTransaction(tx) {
+  if (!tx || typeof tx !== 'object') throw new Error('ข้อมูลไม่ถูกต้อง');
+  const amount = parseFloat(tx.amount);
+  if (!amount || amount <= 0) throw new Error('จำนวนเงินต้องมากกว่า 0');
+  if (!tx.description || String(tx.description).trim() === '') throw new Error('กรุณาระบุรายละเอียด');
+  if (!VALID_TYPES.includes(tx.type)) throw new Error('ประเภทรายการไม่ถูกต้อง');
+  if (!VALID_CATEGORIES.includes(tx.category)) throw new Error('หมวดหมู่ไม่ถูกต้อง');
+  if (!tx.date) throw new Error('กรุณาระบุวันที่');
+}
+
 function addTransaction(tx) {
+  validateTransaction(tx);
   const sheet = getSheet();
   tx.createdAt = tx.createdAt || new Date().toISOString();
   sheet.appendRow([
-    tx.id, tx.type, tx.amount, tx.description,
+    tx.id, tx.type, parseFloat(tx.amount), String(tx.description).trim(),
     tx.category, tx.date, tx.createdAt, tx.imageUrl || ''
   ]);
   return tx;
 }
 
 function updateTransaction(tx) {
+  validateTransaction(tx);
   const sheet = getSheet();
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
@@ -135,6 +165,62 @@ function clearAllTransactions() {
     sheet.deleteRows(2, lastRow - 1);
   }
   return { cleared: true };
+}
+
+// ---- Gemini Slip Scan (server-side — API key never exposed to browser) ----
+function scanSlipWithGemini(base64Data, mimeType) {
+  const apiKey = getGeminiKey();
+  if (!apiKey) throw new Error('GEMINI_API_KEY ยังไม่ได้ตั้งค่าใน Script Properties');
+
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
+  const payload = {
+    contents: [{
+      parts: [
+        { text: 'Extract transaction details from this Thai bank slip image. Return ONLY JSON format: {"amount": 123.45, "description": "Name of recipient"}. If amount not found, return {"amount": null, "description": ""}. Focus on the total transfer amount.' },
+        { inline_data: { mime_type: mimeType || 'image/jpeg', data: base64Data } }
+      ]
+    }]
+  };
+
+  const response = UrlFetchApp.fetch(url, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+
+  const code = response.getResponseCode();
+  if (code !== 200) {
+    const err = JSON.parse(response.getContentText());
+    throw new Error(err.error?.message || 'Gemini API Error ' + code);
+  }
+
+  const result = JSON.parse(response.getContentText());
+  const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!aiText) throw new Error('AI ส่งข้อมูลกลับมาผิดรูปแบบ');
+
+  const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('AI ไม่พบ JSON ในคำตอบ');
+
+  return JSON.parse(jsonMatch[0]);
+}
+
+// ---- Settings (cutoff day) synced via Script Properties ----
+function saveSetting(key, value) {
+  if (!key || typeof key !== 'string') throw new Error('Invalid setting key');
+  PropertiesService.getUserProperties().setProperty('mf_setting_' + key, String(value));
+  return { key, value };
+}
+
+function getSettings() {
+  const props = PropertiesService.getUserProperties().getProperties();
+  const settings = {};
+  Object.keys(props).forEach(k => {
+    if (k.startsWith('mf_setting_')) {
+      settings[k.replace('mf_setting_', '')] = props[k];
+    }
+  });
+  return settings;
 }
 
 function uploadImage(base64Data, filename, mimeType) {
