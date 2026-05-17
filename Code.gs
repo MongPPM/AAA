@@ -137,8 +137,9 @@ function updateTransaction(tx) {
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0]) === String(tx.id)) {
       sheet.getRange(i + 1, 1, 1, HEADERS.length).setValues([[
-        tx.id, tx.type, tx.amount, tx.description,
-        tx.category, tx.date, tx.createdAt || data[i][6], tx.imageUrl !== undefined ? tx.imageUrl : (data[i][7] || '')
+        tx.id, tx.type, parseFloat(tx.amount), String(tx.description).trim(),
+        tx.category, tx.date, tx.createdAt || data[i][6],
+        (tx.imageUrl != null && tx.imageUrl !== '') ? tx.imageUrl : (data[i][7] || '')
       ]]);
       return tx;
     }

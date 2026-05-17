@@ -27,6 +27,11 @@ const CAT_COLORS = {
   expense: ['#f43f5e','#e11d48','#fb7185','#f97316','#fb923c','#fbbf24','#a855f7','#8b5cf6','#6366f1'],
 };
 
+// Flat lookup Map — built once, O(1) per call instead of array spread + find
+const CAT_MAP = new Map(
+  [...CATEGORIES.income, ...CATEGORIES.expense].map(c => [c.id, c])
+);
+
 // ========================
 // State
 // ========================
@@ -60,8 +65,10 @@ async function apiFetch(action, transaction = null) {
     return data.data;
   } else {
     // POST with text/plain to avoid CORS preflight
+    // uploadImage / scanSlip / saveSetting send their fields at the top level;
+    // everything else nests data under "transaction" for the backend router.
     let payload = { action };
-    if (action === 'uploadImage') {
+    if (['uploadImage', 'scanSlip', 'saveSetting'].includes(action)) {
       payload = { ...payload, ...transaction };
     } else {
       payload.transaction = transaction;
@@ -151,7 +158,7 @@ function formatDate(dateStr) {
   return `${datePart} · ${timePart}`;
 }
 function getCategoryInfo(type, catId) {
-  return [...CATEGORIES.income, ...CATEGORIES.expense].find(c => c.id === catId) || { label: catId, emoji: '📌' };
+  return CAT_MAP.get(catId) || { label: catId, emoji: '📌' };
 }
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -165,39 +172,42 @@ function escapeHtml(str) {
 // ========================
 // Totals & Cycle Helper
 // ========================
+function clampedDate(year, month, day) {
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  return new Date(year, month, Math.min(day, lastDay));
+}
+
+function getCycleRange() {
+  const now = new Date();
+  const yr = now.getFullYear(), mo = now.getMonth();
+  let start = clampedDate(yr, mo, cutoffDay);
+  if (now.getDate() < cutoffDay) {
+    const prevMo = mo === 0 ? 11 : mo - 1;
+    const prevYr = mo === 0 ? yr - 1 : yr;
+    start = clampedDate(prevYr, prevMo, cutoffDay);
+  }
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + 1);
+  return { start, end };
+}
+
 function isInCurrentCycle(dateStr) {
   if (!dateStr) return false;
   const txDate = new Date(dateStr);
   if (isNaN(txDate.getTime())) return false;
-  
-  const now = new Date();
-  // Clamp cutoffDay to the actual last day of a given month
-  const clampedDate = (year, month, day) => {
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    return new Date(year, month, Math.min(day, lastDay));
-  };
-
-  let yr = now.getFullYear(), mo = now.getMonth();
-  let startOfCycle = clampedDate(yr, mo, cutoffDay);
-  if (now.getDate() < cutoffDay) {
-    const prevMo = mo - 1 < 0 ? 11 : mo - 1;
-    const prevYr = mo - 1 < 0 ? yr - 1 : yr;
-    startOfCycle = clampedDate(prevYr, prevMo, cutoffDay);
-  }
-
-  let endOfCycle = new Date(startOfCycle);
-  endOfCycle.setMonth(endOfCycle.getMonth() + 1);
-  
-  return txDate >= startOfCycle && txDate < endOfCycle;
+  const { start, end } = getCycleRange();
+  return txDate >= start && txDate < end;
 }
 
 function getTotals() {
   let income = 0, expense = 0;
+  const { start, end } = getCycleRange();
   transactions.forEach(t => {
-    if (isInCurrentCycle(t.date)) {
-      if (t.type === 'income') income += Number(t.amount);
-      else expense += Number(t.amount);
-    }
+    if (!t.date) return;
+    const d = new Date(t.date);
+    if (isNaN(d.getTime()) || d < start || d >= end) return;
+    if (t.type === 'income') income += Number(t.amount);
+    else expense += Number(t.amount);
   });
   const round2 = n => Math.round(n * 100) / 100;
   return { income: round2(income), expense: round2(expense), balance: round2(income - expense) };
@@ -207,12 +217,12 @@ function getTotals() {
 // Toast
 // ========================
 let toastTimer;
-function showToast(msg, type = 'success') {
+function showToast(msg, type = 'success', duration = 3500) {
   const toast = document.getElementById('toast');
   toast.textContent = msg;
   toast.className = `toast show ${type}`;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { toast.className = 'toast'; }, 3500);
+  toastTimer = setTimeout(() => { toast.className = 'toast'; }, duration);
 }
 
 // ========================
@@ -370,7 +380,11 @@ function renderDailyChart() {
   }
 
   if (dailyChartInstance) {
-    dailyChartInstance.destroy();
+    dailyChartInstance.data.labels = labels;
+    dailyChartInstance.data.datasets[0].data = incomeData;
+    dailyChartInstance.data.datasets[1].data = expenseData;
+    dailyChartInstance.update('none');
+    return;
   }
 
   dailyChartInstance = new Chart(ctx, {
@@ -450,11 +464,6 @@ function renderCategoryBreakdown(type, containerId) {
     container.appendChild(div);
   });
 }
-
-// ========================
-// Render Settings
-// ========================
-
 
 // ========================
 // Render All
@@ -680,12 +689,10 @@ async function handleSlipScan(e) {
     barEl.style.setProperty('--progress', '100%');
     
   } catch (err) {
-    console.error('Detailed Gemini Error:', err);
-    // Show the full error to the user for debugging
-    showToast('⚠️ สแกนไม่ได้ (ระบบจะแนบรูปนี้ไว้เฉยๆ)', 'error', 5000); 
+    console.error('Gemini scan error:', err);
+    showToast('⚠️ AI วิเคราะห์ไม่ได้ — กรอกยอดเองได้เลย รูปยังแนบอยู่', 'error', 5000);
   } finally {
     setTimeout(() => progressEl.classList.remove('active'), 500);
-    // e.target.value = ''; // keep file input in case they want to submit without AI success
   }
 }
 
@@ -774,6 +781,7 @@ function init() {
       showLoading('กำลังล้างข้อมูล...');
       await apiFetch('clearAll');
       transactions = [];
+      saveLocalCache();
       renderAll();
       showToast('🗑️ ล้างข้อมูลทั้งหมดแล้ว');
     } catch (err) {
