@@ -671,8 +671,32 @@ async function handleSlipScan(e) {
     textEl.textContent = 'Gemini 2.5 AI กำลังวิเคราะห์สลิป...';
     barEl.style.setProperty('--progress', '40%');
 
-    // Route through GAS backend — API key is stored securely in Script Properties
-    const data = await apiFetch('scanSlip', { base64Data, mimeType });
+    const geminiKey = localStorage.getItem('mf_gemini_key');
+    if (!geminiKey) throw new Error('ยังไม่ได้ตั้งค่า Gemini API Key — ไปที่ ⚙️ ตั้งค่า แล้วใส่ key');
+
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { text: 'Extract transaction details from this Thai bank slip image. Return ONLY JSON: {"amount": 123.45, "description": "recipient name"}. If no amount found return {"amount": null, "description": ""}.' },
+            { inline_data: { mime_type: mimeType, data: base64Data } }
+          ]}]
+        })
+      }
+    );
+    if (!geminiRes.ok) {
+      const errData = await geminiRes.json().catch(() => ({}));
+      throw new Error(errData.error?.message || `Gemini API Error ${geminiRes.status}`);
+    }
+    const geminiResult = await geminiRes.json();
+    const aiText = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!aiText) throw new Error('AI ส่งข้อมูลกลับมาผิดรูปแบบ');
+    const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('AI ไม่พบ JSON ในคำตอบ');
+    const data = JSON.parse(jsonMatch[0]);
     barEl.style.setProperty('--progress', '90%');
 
     if (data.amount) {
@@ -801,6 +825,8 @@ function init() {
   // Settings
   document.getElementById('btn-open-settings').addEventListener('click', () => {
     document.getElementById('input-cutoff-day').value = cutoffDay;
+    const savedKey = localStorage.getItem('mf_gemini_key') || '';
+    document.getElementById('input-gemini-key').value = savedKey ? '••••••••' : '';
     openModal('settings-modal-overlay');
   });
   document.getElementById('settings-modal-close').addEventListener('click', () => closeModal('settings-modal-overlay'));
@@ -812,9 +838,13 @@ function init() {
     if (day >= 1 && day <= 31) {
       cutoffDay = day;
       localStorage.setItem('mf_cutoff_day', cutoffDay);
+      // Save Gemini key only if user typed a new one (not the masked placeholder)
+      const keyInput = document.getElementById('input-gemini-key').value.trim();
+      if (keyInput && !keyInput.startsWith('•')) {
+        localStorage.setItem('mf_gemini_key', keyInput);
+      }
       closeModal('settings-modal-overlay');
       renderAll();
-      // Sync to server in background (silent — don't block UI)
       apiFetch('saveSetting', { key: 'cutoff_day', value: cutoffDay })
         .then(() => showToast('บันทึกตั้งค่าแล้ว (ซิงค์แล้ว)'))
         .catch(() => showToast('บันทึกตั้งค่าในเครื่องแล้ว (ซิงค์ไม่ได้)', 'error'));
