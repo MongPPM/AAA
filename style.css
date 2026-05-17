@@ -995,3 +995,14 @@ a { color: var(--indigo); text-decoration: none; }
   text-align: center; font-size: 12px; color: var(--text-3);
   margin-top: 12px;
 }
+
+/* ========================
+   Version Badge
+   ======================== */
+.app-version {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-3);
+  padding: 6px 0 2px;
+  letter-spacing: 0.3px;
+}

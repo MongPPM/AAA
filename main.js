@@ -1,4 +1,5 @@
 import { auth, db, googleProvider } from './firebase.js';
+import { APP_VERSION } from './version.js';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
@@ -80,16 +81,9 @@ onAuthStateChanged(auth, (user) => {
     currentUser = user;
     showApp();
     updateUserProfile();
-
-    // Show cached data immediately — no spinner if we have local data
-    if (transactions.length > 0) {
-      setSyncStatus('syncing');
-      renderAll();
-    } else {
-      showLoading('กำลังโหลดข้อมูล...');
-    }
-
-    // Run meta + listener in parallel — don't await sequentially
+    setSyncStatus('syncing');
+    if (transactions.length > 0) renderAll();
+    // No full-screen overlay — sync badge shows status instead
     loadUserMeta();
     setupRealtimeListener();
   } else {
@@ -869,6 +863,8 @@ function init() {
   updateCurrentDate();
   populateCategorySelect('income');
   populateFilterCategory();
+  const verEl = document.getElementById('app-version');
+  if (verEl) verEl.textContent = 'v' + APP_VERSION;
 
   // Login screen
   document.getElementById('btn-google-signin').addEventListener('click', handleSignIn);
