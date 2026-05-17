@@ -1138,7 +1138,13 @@ a { color: var(--indigo); text-decoration: none; }
   margin-top: 6px; min-height: 18px;
 }
 .scan-info-row.pro       { color: #b45309; font-weight: 500; }
+.scan-info-row.warning   { color: #ca8a04; font-weight: 600; }
+.scan-info-row.danger    { color: var(--red); font-weight: 700; animation: blink-red 0.9s ease-in-out infinite; }
 .scan-info-row.exhausted { color: var(--red); font-weight: 600; }
+@keyframes blink-red {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
 
 /* ========================
    Upgrade Modal

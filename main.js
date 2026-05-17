@@ -181,13 +181,6 @@ function cleanupOldImages() {
 // ========================
 async function loadUserMeta() {
   try {
-    // Dev accounts use override (toggleable Free/Pro)
-    if (DEV_EMAILS.includes(currentUser?.email)) {
-      userPlan = devPlanOverride;
-      updatePlanUI();
-      updateDevToggleUI();
-      return;
-    }
     const snap = await getDoc(metaRef());
     if (snap.exists()) {
       const data = snap.data();
@@ -195,11 +188,18 @@ async function loadUserMeta() {
         cutoffDay = parseInt(data.cutoff_day) || 1;
         localStorage.setItem('mf_cutoff_day', cutoffDay);
       }
-      userPlan  = data.plan || 'free';
+      // Always load scan data (dev accounts too)
       scanCount = data.scan_count || 0;
       scanDate  = data.scan_date  || '';
+      // Dev accounts use local override for plan, others use Firestore
+      userPlan = DEV_EMAILS.includes(currentUser?.email)
+        ? devPlanOverride
+        : (data.plan || 'free');
+    } else if (DEV_EMAILS.includes(currentUser?.email)) {
+      userPlan = devPlanOverride;
     }
     updatePlanUI();
+    if (DEV_EMAILS.includes(currentUser?.email)) updateDevToggleUI();
   } catch (err) {
     console.error('loadUserMeta error:', err);
   }
@@ -229,8 +229,11 @@ function updatePlanUI() {
       const today = new Date().toLocaleDateString('sv'); // YYYY-MM-DD local
       const used  = scanDate === today ? scanCount : 0;
       const left  = FREE_SCAN_LIMIT - used;
-      scanInfo.textContent = `Free — เหลือ ${left}/${FREE_SCAN_LIMIT} ครั้งวันนี้`;
-      scanInfo.className   = left > 0 ? 'scan-info-row' : 'scan-info-row exhausted';
+      scanInfo.textContent = left > 0
+        ? `Free — เหลือ ${left}/${FREE_SCAN_LIMIT} ครั้งวันนี้`
+        : `หมดแล้ววันนี้ — อัปเกรด Pro เพื่อสแกนต่อ`;
+      const cls = left <= 0 ? 'exhausted' : left === 1 ? 'danger' : left <= 3 ? 'warning' : '';
+      scanInfo.className = `scan-info-row${cls ? ' ' + cls : ''}`;
     }
   }
 }
