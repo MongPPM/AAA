@@ -3,10 +3,12 @@
 //  วางโค้ดนี้ใน Google Apps Script แล้ว Deploy เป็น Web App
 // ============================================================
 
-// Gemini API key — set via File > Project Properties > Script Properties
-// Key name: GEMINI_API_KEY  (more secure than hardcoding)
+// Gemini API key — Script Properties takes priority over the fallback below.
+// To rotate the key: Project Settings → Script Properties → GEMINI_API_KEY
+const GEMINI_API_KEY_FALLBACK = 'AIzaSyCAvi-wgDdnF6vOJXnnDbwXfWFrYwaKIpE';
 function getGeminiKey() {
-  return PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY') || '';
+  return PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY')
+    || GEMINI_API_KEY_FALLBACK;
 }
 
 // ---- Web App Interface & API ----

@@ -690,7 +690,7 @@ async function handleSlipScan(e) {
     
   } catch (err) {
     console.error('Gemini scan error:', err);
-    showToast('⚠️ AI วิเคราะห์ไม่ได้ — กรอกยอดเองได้เลย รูปยังแนบอยู่', 'error', 5000);
+    showToast('⚠️ สแกนไม่ได้: ' + err.message + ' — รูปยังแนบอยู่ กรอกยอดเองได้เลย', 'error', 6000);
   } finally {
     setTimeout(() => progressEl.classList.remove('active'), 500);
   }
