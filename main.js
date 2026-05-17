@@ -232,10 +232,12 @@ function setView(view) {
   currentView = view;
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav-item').forEach(el => el.classList.remove('active'));
   const el = document.getElementById(`view-${view}`);
   if (el) el.classList.add('active');
   const navEl = document.getElementById(`nav-${view}`);
   if (navEl) navEl.classList.add('active');
+  document.querySelectorAll(`.bottom-nav-item[data-view="${view}"]`).forEach(el => el.classList.add('active'));
   const titles = { dashboard: 'ภาพรวม', transactions: 'รายการทั้งหมด', analytics: 'วิเคราะห์ตามหมวดหมู่', trends: 'แนวโน้มรายวัน' };
   document.getElementById('page-title').textContent = titles[view] || '';
   renderAll();
@@ -722,8 +724,11 @@ function init() {
   populateCategorySelect('income');
   populateFilterCategory();
 
-  // Navigation
-  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.view)));
+  // Navigation (sidebar + bottom nav)
+  document.querySelectorAll('.nav-item, .bottom-nav-item').forEach(btn => btn.addEventListener('click', () => {
+    setView(btn.dataset.view);
+    document.getElementById('sidebar').classList.remove('open');
+  }));
   document.getElementById('see-all-btn').addEventListener('click', () => setView('transactions'));
 
   // Mobile sidebar

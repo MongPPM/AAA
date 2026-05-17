@@ -553,6 +553,39 @@ a { text-decoration: none; color: inherit; }
 .toast.error { border-left: 3px solid var(--accent-red); }
 
 /* ========================
+   Bottom Navigation (mobile)
+   ======================== */
+.bottom-nav {
+  display: none;
+}
+@media (max-width: 900px) {
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 60px;
+    background: var(--bg-sidebar);
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    z-index: 300;
+  }
+  .bottom-nav-item {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px;
+    color: var(--text-muted);
+    font-size: 10px;
+    transition: color var(--transition);
+    background: transparent; border: none; cursor: pointer;
+    padding: 6px 0;
+  }
+  .bottom-nav-item.active { color: var(--accent-blue); }
+  .bottom-nav-item:hover { color: var(--text-primary); }
+  .bottom-nav-icon { font-size: 20px; line-height: 1; }
+  .bottom-nav-label { font-size: 10px; font-weight: 500; }
+}
+
+/* ========================
    Responsive
    ======================== */
 @media (max-width: 900px) {
@@ -568,8 +601,11 @@ a { text-decoration: none; color: inherit; }
     width: 240px;
   }
 
-  .main-content { margin-left: 0; }
+  .main-content { margin-left: 0; padding-bottom: 60px; }
   .menu-toggle { display: flex; }
+
+  /* Modal leaves room for bottom nav */
+  .modal-overlay { bottom: 60px; }
 
   .summary-cards { grid-template-columns: 1fr 1fr; }
   .card-balance { grid-column: 1 / -1; }
