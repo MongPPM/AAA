@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="description" content="แอปติดตามรายรับรายจ่ายส่วนตัว ซิงค์ข้อมูลผ่าน Firebase" />
+    <title>MoneyFlow — รายรับรายจ่าย</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin />
+    <link rel="dns-prefetch" href="https://firebaseapp.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="/assets/logo-D-a2ymq_.png" />
+    <link rel="apple-touch-icon" href="/assets/logo-D-a2ymq_.png" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module" crossorigin src="/assets/index-DKuxnqdF.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-6-Qb4_6X.css">
+  </head>
+  <body>
+
+    <!-- Global Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+      <div class="loading-spinner"></div>
+      <p class="loading-text" id="loading-text" data-i18n="loading.default">กำลังโหลด...</p>
+    </div>
+
+    <!-- ======================== -->
+    <!-- Login Screen             -->
+    <!-- ======================== -->
+    <div class="login-screen" id="login-screen">
+      <div class="login-card">
+        <div class="login-logo">
+          <img src="/assets/logo-D-a2ymq_.png" alt="MoneyFlow" onerror="this.style.display='none'" />
+        </div>
+        <h1 class="login-title">MoneyFlow</h1>
+        <p class="login-subtitle" data-i18n-html="login.subtitle">บันทึกรายรับ-รายจ่ายส่วนตัว<br/>ข้อมูลของคุณ เห็นแค่คุณคนเดียว</p>
+        <button class="btn-google-signin" id="btn-google-signin">
+          <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
+            <path d="M43.611 20.083H42V20H24v8h11.303C33.97 32.19 29.418 35 24 35c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" fill="#FFC107"/>
+            <path d="M6.306 14.691l6.571 4.819C14.655 15.108 19.004 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" fill="#FF3D00"/>
+            <path d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" fill="#4CAF50"/>
+            <path d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C42.022 35.851 44 30.138 44 24c0-1.341-.138-2.65-.389-3.917z" fill="#1976D2"/>
+          </svg>
+          <span data-i18n="login.google">เข้าสู่ระบบด้วย Google</span>
+        </button>
+        <p class="login-note" data-i18n-html="login.note">ข้อมูลทั้งหมดเก็บในบัญชี Google ของคุณ<br/>ไม่มีค่าใช้จ่าย · ปลอดภัย · ใช้ได้ทุกอุปกรณ์</p>
+      </div>
+    </div>
+
+    <!-- ======================== -->
+    <!-- App                      -->
+    <!-- ======================== -->
+    <div class="app-wrapper" id="app-wrapper" style="display:none">
+
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div class="logo">
+            <div class="logo-img-wrapper">
+              <img src="/assets/logo-D-a2ymq_.png" alt="MoneyFlow Logo" class="logo-img" onerror="this.style.display='none'" />
+            </div>
+            <span class="logo-text">MoneyFlow</span>
+          </div>
+          <div class="sidebar-header-row">
+            <div class="sync-badge" id="sync-badge" title="สถานะซิงค์">
+              <span class="sync-dot"></span>
+              <span class="sync-label" id="sync-label" data-i18n="sync.offline">ออฟไลน์</span>
+            </div>
+            <button class="settings-btn" id="btn-open-settings" title="ตั้งค่าระบบ">⚙️</button>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <button class="nav-item active" data-view="dashboard" id="nav-dashboard">
+            <span class="nav-icon">📊</span><span data-i18n="nav.dashboard">ภาพรวม</span>
+          </button>
+          <button class="nav-item" data-view="transactions" id="nav-transactions">
+            <span class="nav-icon">📋</span><span data-i18n="nav.transactions">รายการทั้งหมด</span>
+          </button>
+          <button class="nav-item" data-view="analytics" id="nav-analytics">
+            <span class="nav-icon">📊</span><span data-i18n="nav.analytics">หมวดหมู่</span>
+          </button>
+          <button class="nav-item" data-view="trends" id="nav-trends">
+            <span class="nav-icon">📈</span><span data-i18n="nav.trends">แนวโน้ม</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <!-- User Profile -->
+          <div class="user-profile">
+            <img class="user-avatar" id="user-avatar" src="" alt="" />
+            <div class="user-info">
+              <div class="user-name" id="user-name">กำลังโหลด...</div>
+              <div class="plan-badge" id="plan-badge">Free</div>
+            </div>
+          </div>
+          <!-- Upgrade (hidden when Pro) -->
+          <button class="btn-upgrade" id="btn-upgrade">
+            <span data-i18n="sidebar.upgrade">⭐ อัปเกรดเป็น Pro</span>
+          </button>
+          <!-- Dev toggle (only dev accounts) -->
+          <button class="btn-dev-toggle" id="btn-dev-toggle" style="display:none"></button>
+          <!-- Sign out -->
+          <button class="btn-signout" id="btn-signout">
+            <span>🚪</span> <span data-i18n="sidebar.signout">ออกจากระบบ</span>
+          </button>
+          <div class="app-version" id="app-version"></div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <header class="top-bar">
+          <!-- Desktop: hamburger (hidden on mobile) -->
+          <button class="menu-toggle" id="menu-toggle" aria-label="toggle menu">☰</button>
+
+          <!-- Mobile: account info on left (hidden on desktop) -->
+          <div class="mobile-account" id="mobile-account">
+            <img class="mobile-avatar" id="mobile-avatar" src="" alt="avatar" />
+            <div class="mobile-account-info">
+              <span class="mobile-user-name" id="mobile-user-name"></span>
+              <span class="plan-badge mobile-plan-badge" id="mobile-plan-badge">Free</span>
+            </div>
+          </div>
+
+          <div class="top-bar-title" id="page-title" data-i18n="page.dashboard">ภาพรวม</div>
+          <div class="top-bar-right">
+            <div class="current-date" id="current-date"></div>
+            <!-- Mobile: updates button (Free plan only, hidden on desktop) -->
+            <button class="mobile-topbar-btn" id="mobile-btn-updates" title="อัปเดต" style="display:none">🆕</button>
+            <!-- Mobile: settings button (hidden on desktop) -->
+            <button class="mobile-topbar-btn" id="mobile-btn-settings" title="ตั้งค่า">⚙️</button>
+            <!-- Desktop add button (hidden on mobile) -->
+            <button class="btn-add-primary btn-add-desktop" id="btn-open-modal">
+              <span>+ </span><span data-i18n="topbar.add.text">เพิ่มรายการ</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- Dashboard View -->
+        <section class="view active" id="view-dashboard">
+          <div class="summary-cards">
+            <div class="card card-balance">
+              <div class="card-label" data-i18n="dash.balance">ยอดคงเหลือ</div>
+              <div class="card-amount" id="total-balance">฿0.00</div>
+              <div class="card-sub" id="balance-trend"></div>
+            </div>
+            <div class="card card-income">
+              <div class="card-icon">↑</div>
+              <div class="card-label" data-i18n="dash.income">รายรับ</div>
+              <div class="card-amount" id="total-income">฿0.00</div>
+            </div>
+            <div class="card card-expense">
+              <div class="card-icon">↓</div>
+              <div class="card-label" data-i18n="dash.expense">รายจ่าย</div>
+              <div class="card-amount" id="total-expense">฿0.00</div>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <h2 class="section-title" data-i18n="dash.expenseRatio">สัดส่วนรายจ่าย</h2>
+            <div class="expense-ratio-bar">
+              <div class="ratio-fill" id="ratio-fill"></div>
+            </div>
+            <div class="ratio-labels">
+              <span id="ratio-income-label">รายรับ 0%</span>
+              <span id="ratio-expense-label">รายจ่าย 0%</span>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-header">
+              <h2 class="section-title" data-i18n="dash.recent">รายการล่าสุด</h2>
+              <button class="link-btn" data-view="transactions" id="see-all-btn" data-i18n="dash.seeAll">ดูทั้งหมด →</button>
+            </div>
+            <div class="transaction-list" id="recent-list">
+              <div class="empty-state" id="empty-recent">
+                <div class="empty-icon">💰</div>
+                <p data-i18n-html="dash.empty">ยังไม่มีรายการ<br/>กด "เพิ่มรายการ" เพื่อเริ่มต้น</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- All Transactions View -->
+        <section class="view" id="view-transactions">
+          <div class="section-card">
+            <div class="section-header">
+              <h2 class="section-title" data-i18n="tx.title">รายการทั้งหมด</h2>
+              <div class="tx-controls">
+                <div class="view-mode-toggle">
+                  <button class="view-mode-btn active" id="btn-view-list" title="มุมมองรายการ" data-i18n="tx.viewList">☰ รายการ</button>
+                  <button class="view-mode-btn" id="btn-view-split" title="แยกรายรับ/รายจ่าย" data-i18n="tx.viewSplit">⊞ แยก</button>
+                </div>
+                <div class="view-mode-toggle">
+                  <button class="view-mode-btn" id="btn-range-all" title="ทุกรายการ" data-i18n="tx.rangeAll">ทั้งหมด</button>
+                  <button class="view-mode-btn active" id="btn-range-cycle" title="รอบบิลปัจจุบัน" data-i18n="tx.rangeCycle">รอบบิล</button>
+                </div>
+                <div class="filter-group">
+                  <select class="filter-select" id="filter-type">
+                    <option value="all" data-i18n="tx.filterAllTypes">ทุกประเภท</option>
+                    <option value="income" data-i18n="tx.filterIncome">รายรับ</option>
+                    <option value="expense" data-i18n="tx.filterExpense">รายจ่าย</option>
+                  </select>
+                  <select class="filter-select" id="filter-category">
+                    <option value="all" data-i18n="tx.filterAllCats">ทุกหมวดหมู่</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <!-- List view -->
+            <div id="tx-list-view">
+              <div class="transaction-list" id="all-list">
+                <div class="empty-state" id="empty-all">
+                  <div class="empty-icon">📋</div>
+                  <p data-i18n="tx.noResults">ไม่มีรายการที่ตรงกับเงื่อนไข</p>
+                </div>
+              </div>
+            </div>
+            <!-- Split view -->
+            <div id="tx-split-view" style="display:none">
+              <!-- Balance Scale -->
+              <div class="balance-scale" id="balance-scale">
+                <div class="scale-amounts">
+                  <span class="scale-amount income" id="scale-income-total">฿0.00</span>
+                  <span class="scale-verdict" id="scale-verdict" data-i18n="tx.scale.equal">เท่ากัน</span>
+                  <span class="scale-amount expense" id="scale-expense-total">฿0.00</span>
+                </div>
+
+                <!-- SVG Balance Scale -->
+                <svg class="scale-svg" viewBox="0 0 320 185" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="sg-metal" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%"   stop-color="#94a3b8"/>
+                      <stop offset="35%"  stop-color="#e2e8f0"/>
+                      <stop offset="65%"  stop-color="#e2e8f0"/>
+                      <stop offset="100%" stop-color="#94a3b8"/>
+                    </linearGradient>
+                    <linearGradient id="sg-pole" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%"   stop-color="#94a3b8"/>
+                      <stop offset="40%"  stop-color="#f1f5f9"/>
+                      <stop offset="60%"  stop-color="#f1f5f9"/>
+                      <stop offset="100%" stop-color="#94a3b8"/>
+                    </linearGradient>
+                    <linearGradient id="sg-base" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%"   stop-color="#6b7280"/>
+                      <stop offset="100%" stop-color="#374151"/>
+                    </linearGradient>
+                    <linearGradient id="sg-glass" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%"   stop-color="#a7f3d0" stop-opacity="0.55"/>
+                      <stop offset="100%" stop-color="#6ee7b7" stop-opacity="0.2"/>
+                    </linearGradient>
+                    <radialGradient id="sg-gauge" cx="38%" cy="38%" r="62%">
+                      <stop offset="0%"   stop-color="#f8fafc"/>
+                      <stop offset="100%" stop-color="#cbd5e1"/>
+                    </radialGradient>
+                    <filter id="sg-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="rgba(0,0,0,0.15)"/>
+                    </filter>
+                  </defs>
+
+                  <!-- Base platform -->
+                  <rect x="90" y="168" width="140" height="14" rx="5" fill="url(#sg-base)" filter="url(#sg-shadow)"/>
+                  <rect x="100" y="166" width="120" height="4" rx="2" fill="#9ca3af" opacity="0.35"/>
+
+                  <!-- Pole -->
+                  <rect x="156" y="58" width="8" height="112" rx="4" fill="url(#sg-pole)"/>
+
+                  <!-- Top collar -->
+                  <ellipse cx="160" cy="59" rx="11" ry="4" fill="#94a3b8"/>
+
+                  <!-- Gauge outer ring -->
+                  <circle cx="160" cy="44" r="22" fill="none" stroke="#94a3b8" stroke-width="2.5" filter="url(#sg-shadow)"/>
+                  <!-- Gauge face -->
+                  <circle cx="160" cy="44" r="18" fill="url(#sg-gauge)"/>
+                  <!-- Gauge tick marks -->
+                  <line x1="160" y1="27" x2="160" y2="32" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="160" y1="56" x2="160" y2="61" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="143" y1="44" x2="148" y2="44" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="172" y1="44" x2="177" y2="44" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
+                  <!-- Gauge center gear -->
+                  <circle cx="160" cy="44" r="5" fill="#94a3b8"/>
+                  <circle cx="160" cy="44" r="2.5" fill="#e2e8f0"/>
+
+                  <!-- ═══ BEAM GROUP (rotates around pivot 160,44) ═══ -->
+                  <g id="scale-beam" class="scale-beam-svg">
+
+                    <!-- Beam bar -->
+                    <rect x="55" y="41" width="210" height="6" rx="3" fill="url(#sg-metal)"/>
+                    <!-- End knobs -->
+                    <circle cx="62"  cy="44" r="5" fill="#94a3b8"/>
+                    <circle cx="258" cy="44" r="5" fill="#94a3b8"/>
+
+                    <!-- Left cables (V-shape) -->
+                    <line x1="56"  y1="48" x2="40"  y2="116" stroke="#94a3b8" stroke-width="1.4" opacity="0.85"/>
+                    <line x1="68"  y1="48" x2="84"  y2="116" stroke="#94a3b8" stroke-width="1.4" opacity="0.85"/>
+
+                    <!-- Right cables (V-shape) -->
+                    <line x1="252" y1="48" x2="236" y2="116" stroke="#94a3b8" stroke-width="1.4" opacity="0.85"/>
+                    <line x1="264" y1="48" x2="280" y2="116" stroke="#94a3b8" stroke-width="1.4" opacity="0.85"/>
+
+                    <!-- Left pan (income) -->
+                    <g id="scale-pan-left" class="scale-pan-svg income-pan">
+                      <ellipse cx="62"  cy="120" rx="46" ry="7"   fill="url(#sg-glass)" stroke="#94a3b8" stroke-width="1.5"/>
+                      <ellipse cx="62"  cy="116" rx="46" ry="4.5" fill="none"           stroke="rgba(167,243,208,0.6)" stroke-width="1"/>
+                      <ellipse cx="62"  cy="120" rx="32" ry="4.5" fill="none"           stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+                    </g>
+
+                    <!-- Right pan (expense) -->
+                    <g id="scale-pan-right" class="scale-pan-svg expense-pan">
+                      <ellipse cx="258" cy="120" rx="46" ry="7"   fill="url(#sg-glass)" stroke="#94a3b8" stroke-width="1.5"/>
+                      <ellipse cx="258" cy="116" rx="46" ry="4.5" fill="none"           stroke="rgba(167,243,208,0.6)" stroke-width="1"/>
+                      <ellipse cx="258" cy="120" rx="32" ry="4.5" fill="none"           stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+                    </g>
+
+                  </g><!-- end scale-beam -->
+
+                  <!-- Ground shadow -->
+                  <ellipse cx="160" cy="182" rx="65" ry="3" fill="rgba(0,0,0,0.07)"/>
+                </svg>
+
+                <div class="scale-labels">
+                  <span data-i18n="tx.scale.income">รายรับ</span>
+                  <span data-i18n="tx.scale.expense">รายจ่าย</span>
+                </div>
+              </div>
+              <div class="tx-split-grid">
+                <div class="tx-split-col income-col">
+                  <div class="tx-split-header income" data-i18n="tx.split.income">💰 รายรับ</div>
+                  <div class="transaction-list" id="split-income-list">
+                    <div class="empty-state" id="empty-split-income"><div class="empty-icon">💰</div><p data-i18n="tx.split.emptyIncome">ยังไม่มีรายรับ</p></div>
+                  </div>
+                </div>
+                <div class="tx-split-col expense-col">
+                  <div class="tx-split-header expense" data-i18n="tx.split.expense">💸 รายจ่าย</div>
+                  <div class="transaction-list" id="split-expense-list">
+                    <div class="empty-state" id="empty-split-expense"><div class="empty-icon">💸</div><p data-i18n="tx.split.emptyExpense">ยังไม่มีรายจ่าย</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Trends View -->
+        <section class="view" id="view-trends">
+          <div class="section-card">
+            <h2 class="section-title" id="trends-title">แนวโน้มรายวัน (รอบบิลปัจจุบัน)</h2>
+            <div class="upgrade-notice" id="trends-free-notice" style="display:none">
+              <span id="trends-free-text" data-i18n="trends.freeNotice">📊 Free plan ดูย้อนหลังได้สูงสุด 30 วัน — </span>
+              <button class="link-btn" id="btn-trends-upgrade" data-i18n="trends.upgradeBtn">อัปเกรดเป็น Pro ↗</button>
+            </div>
+            <div class="chart-container">
+              <canvas id="dailyTrendChart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- Analytics View -->
+        <section class="view" id="view-analytics">
+          <div class="section-card">
+            <h2 class="section-title" data-i18n="analytics.expenseTitle">รายจ่ายแยกตามหมวดหมู่</h2>
+            <div class="category-breakdown" id="category-breakdown">
+              <div class="empty-state"><div class="empty-icon">📊</div><p data-i18n="analytics.noData">ยังไม่มีข้อมูล</p></div>
+            </div>
+          </div>
+          <div class="section-card">
+            <h2 class="section-title" data-i18n="analytics.incomeTitle">รายรับแยกตามหมวดหมู่</h2>
+            <div class="category-breakdown" id="income-breakdown">
+              <div class="empty-state"><div class="empty-icon">💵</div><p data-i18n="analytics.noData">ยังไม่มีข้อมูล</p></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- ======================== -->
+    <!-- Add/Edit Modal           -->
+    <!-- ======================== -->
+    <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal">
+        <div class="modal-header">
+          <h2 class="modal-title" id="modal-title" data-i18n="modal.addTitle">เพิ่มรายการใหม่</h2>
+          <button class="modal-close" id="modal-close">✕</button>
+        </div>
+        <div class="scan-section">
+          <button type="button" class="btn-scan" id="btn-scan">
+            <span class="scan-icon">📸</span>
+            <span data-i18n="modal.scan"> สแกนสลิป / แนบรูปภาพ</span>
+          </button>
+          <div class="scan-info-row" id="scan-info"></div>
+          <input type="file" id="input-slip" accept="image/*" style="display:none;" />
+          <div id="scan-progress" class="scan-progress">
+            <div class="progress-bar"></div>
+            <span class="progress-text" data-i18n="modal.scanning">กำลังสแกน...</span>
+          </div>
+          <div id="image-preview-container" class="image-preview-container" style="display:none;">
+            <img id="image-preview" src="" alt="Preview" />
+            <button type="button" id="btn-remove-image" class="btn-remove-image">✕</button>
+          </div>
+        </div>
+        <div class="type-toggle">
+          <button class="type-btn active" id="type-income" data-type="income">
+            <span>↑</span> <span data-i18n="modal.type.income"> รายรับ</span>
+          </button>
+          <button class="type-btn" id="type-expense" data-type="expense">
+            <span>↓</span> <span data-i18n="modal.type.expense"> รายจ่าย</span>
+          </button>
+        </div>
+        <form id="transaction-form" autocomplete="off">
+          <input type="hidden" id="edit-id" value="" />
+          <div class="form-group">
+            <label for="input-amount" data-i18n="modal.amountLabel">จำนวนเงิน (฿)</label>
+            <input type="number" id="input-amount" class="form-input" placeholder="0.00" data-i18n-ph="modal.amountPlaceholder" min="0" step="0.01" required />
+          </div>
+          <div class="form-group">
+            <label for="input-description" data-i18n="modal.descLabel">รายละเอียด</label>
+            <input type="text" id="input-description" class="form-input" placeholder="เช่น ค่าอาหารกลางวัน" data-i18n-ph="modal.descPlaceholder" required />
+          </div>
+          <div class="form-group">
+            <label for="input-category" data-i18n="modal.catLabel">หมวดหมู่</label>
+            <select id="input-category" class="form-input" required></select>
+          </div>
+          <div class="form-group">
+            <label for="input-date" data-i18n="modal.dateLabel">วันและเวลา</label>
+            <input type="datetime-local" id="input-date" class="form-input" required />
+          </div>
+          <div class="form-group-inline">
+            <label class="checkbox-container">
+              <input type="checkbox" id="check-continue" />
+              <span class="checkbox-label" data-i18n="modal.continueLabel">บันทึกและเพิ่มรายการต่อไป</span>
+            </label>
+          </div>
+          <button type="submit" class="btn-submit" id="btn-submit">
+            <span id="submit-label" data-i18n="modal.addBtn">เพิ่มรายการ</span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ======================== -->
+    <!-- Delete Confirm Modal     -->
+    <!-- ======================== -->
+    <div class="modal-overlay" id="delete-overlay" role="dialog" aria-modal="true">
+      <div class="modal modal-sm">
+        <div class="modal-header">
+          <h2 class="modal-title" data-i18n="delete.title">ยืนยันการลบ</h2>
+          <button class="modal-close" id="delete-cancel-x">✕</button>
+        </div>
+        <p class="confirm-text" data-i18n="delete.confirm">คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้?</p>
+        <div class="confirm-actions">
+          <button class="btn-cancel" id="delete-cancel" data-i18n="delete.cancel">ยกเลิก</button>
+          <button class="btn-danger" id="delete-confirm" data-i18n="delete.delete">ลบ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================== -->
+    <!-- Settings Modal           -->
+    <!-- ======================== -->
+    <div class="modal-overlay" id="settings-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+      <div class="modal settings-modal">
+        <div class="modal-header">
+          <h2 class="modal-title" id="settings-modal-title" data-i18n="settings.title">ตั้งค่าระบบ</h2>
+          <button class="modal-close" id="settings-modal-close">✕</button>
+        </div>
+        <div class="settings-body">
+
+          <!-- Billing cutoff -->
+          <div class="form-group">
+            <label for="input-cutoff-day" data-i18n="settings.cutoffLabel">วันที่ตัดรอบบิลรายเดือน (1–31)</label>
+            <input type="number" id="input-cutoff-day" class="form-input" min="1" max="31" value="1" />
+            <p class="form-help" data-i18n="settings.cutoffHelp">ตัวอย่าง: ตั้งเป็นวันที่ 25 → รอบนับตั้งแต่ 25 ของเดือนก่อน ถึง 24 ของเดือนนี้</p>
+          </div>
+
+          <!-- Language -->
+          <div class="form-group">
+            <label for="select-language" data-i18n="settings.langLabel">ภาษา / Language</label>
+            <select id="select-language" class="form-input">
+              <option value="th">ภาษาไทย</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+
+          <!-- Save button -->
+          <button class="btn-submit btn-primary" id="btn-save-settings" style="margin-top:8px" data-i18n="settings.save">บันทึกการตั้งค่า</button>
+
+          <!-- Divider -->
+          <div class="settings-divider"></div>
+
+          <!-- Update History (moved from sidebar) -->
+          <button class="btn-settings-action" id="btn-changelog">
+            <span data-i18n="settings.changelog">🆕 ประวัติอัปเดต</span>
+          </button>
+
+          <!-- Clear All Data (moved from sidebar) -->
+          <button class="btn-settings-action danger" id="btn-clear-all">
+            <span data-i18n="settings.clearData">🗑️ ล้างข้อมูลทั้งหมด</span>
+          </button>
+
+          <!-- Sign out (for mobile; hidden on desktop) -->
+          <button class="btn-settings-action settings-signout" id="btn-signout-settings">
+            <span data-i18n="settings.signout">🚪 ออกจากระบบ</span>
+          </button>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================== -->
+    <!-- Upgrade Modal            -->
+    <!-- ======================== -->
+    <div class="modal-overlay" id="upgrade-modal-overlay" role="dialog" aria-modal="true">
+      <div class="modal modal-sm upgrade-modal">
+        <div class="modal-header">
+          <h2 class="modal-title" data-i18n="upgrade.title">⭐ อัปเกรดเป็น Pro</h2>
+          <button class="modal-close" id="upgrade-modal-close">✕</button>
+        </div>
+        <p class="upgrade-reason" id="upgrade-reason"></p>
+
+        <div class="plan-compare">
+          <div class="plan-col plan-free">
+            <div class="plan-name" data-i18n="upgrade.free">Free</div>
+            <div class="plan-price" data-i18n="upgrade.freePrice">ฟรี</div>
+            <ul class="plan-features">
+              <li>✅ บันทึกรายการไม่จำกัด</li>
+              <li>✅ กราฟและสถิติ</li>
+              <li>✅ สแกนสลิป AI <strong>5 ครั้ง/วัน</strong></li>
+              <li class="muted">❌ ไม่เก็บรูปสลิป</li>
+              <li class="muted">❌ แนวโน้มย้อนหลังแค่ 30 วัน</li>
+            </ul>
+          </div>
+          <div class="plan-col plan-pro">
+            <div class="plan-badge-top" data-i18n="upgrade.recommended">แนะนำ</div>
+            <div class="plan-name" data-i18n="upgrade.pro">Pro</div>
+            <div class="plan-price">79 ฿<span>/เดือน</span></div>
+            <ul class="plan-features">
+              <li>✅ ทุกอย่างใน Free</li>
+              <li>✅ สแกนสลิป AI <strong>ไม่จำกัด</strong></li>
+              <li>✅ เก็บรูปสลิป <strong>3 เดือน</strong> (ลบอัตโนมัติ)</li>
+              <li>✅ แนวโน้มรายวัน<strong>เต็มรอบบิล</strong></li>
+            </ul>
+          </div>
+        </div>
+
+        <button class="btn-submit btn-pay" id="btn-pay-omise" data-i18n="upgrade.pay">
+          ชำระเงิน 79 ฿/เดือน
+        </button>
+        <p class="upgrade-note" data-i18n="upgrade.note">ยกเลิกได้ทุกเมื่อ · ชำระผ่านบัตรเครดิต / PromptPay</p>
+      </div>
+    </div>
+
+    <!-- FAB: mobile add button (hidden on desktop) -->
+    <button class="fab-add" id="mobile-fab" aria-label="เพิ่มรายการ">
+      <img src="/add-icon.png" alt="เพิ่มรายการ" class="fab-icon" />
+    </button>
+
+    <!-- Bottom Nav (mobile only) -->
+    <nav class="bottom-nav" id="bottom-nav">
+      <button class="bottom-nav-item active" data-view="dashboard">
+        <span class="bottom-nav-icon">📊</span>
+        <span class="bottom-nav-label" data-i18n="bnav.dashboard">ภาพรวม</span>
+      </button>
+      <button class="bottom-nav-item" data-view="transactions">
+        <span class="bottom-nav-icon">📋</span>
+        <span class="bottom-nav-label" data-i18n="bnav.transactions">รายการ</span>
+      </button>
+      <button class="bottom-nav-item" data-view="analytics">
+        <span class="bottom-nav-icon">📊</span>
+        <span class="bottom-nav-label" data-i18n="bnav.analytics">หมวดหมู่</span>
+      </button>
+      <button class="bottom-nav-item" data-view="trends">
+        <span class="bottom-nav-icon">📈</span>
+        <span class="bottom-nav-label" data-i18n="bnav.trends">แนวโน้ม</span>
+      </button>
+    </nav>
+
+    <!-- Toast -->
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <!-- Changelog Modal -->
+    <div class="modal-overlay" id="changelog-overlay">
+      <div class="modal-box changelog-box">
+        <div class="modal-header">
+          <h2 class="modal-title" data-i18n="changelog.title">ประวัติอัปเดต</h2>
+          <button class="modal-close" id="changelog-close">✕</button>
+        </div>
+        <div class="changelog-body" id="changelog-body"></div>
+      </div>
+    </div>
+
+    <!-- Slip Lightbox -->
+    <div class="slip-lightbox" id="slip-lightbox">
+      <div class="slip-lightbox-backdrop" id="slip-lightbox-backdrop"></div>
+      <div class="slip-lightbox-content">
+        <button class="slip-lightbox-close" id="slip-lightbox-close">✕</button>
+        <img id="slip-lightbox-img" src="" alt="สลิป" />
+      </div>
+    </div>
+
+  </body>
+</html>
