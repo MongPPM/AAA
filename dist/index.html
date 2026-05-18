@@ -14,8 +14,8 @@
     <link rel="icon" type="image/png" href="/assets/logo-D-a2ymq_.png" />
     <link rel="apple-touch-icon" href="/assets/logo-D-a2ymq_.png" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script type="module" crossorigin src="/assets/index-ByXm9c-s.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BJpoe-a7.css">
+    <script type="module" crossorigin src="/assets/index-D1ICjXMs.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DEH_RnUS.css">
   </head>
   <body>
 
@@ -229,95 +229,88 @@
                 </div>
 
                 <!-- SVG Balance Scale -->
-                <svg class="scale-svg" viewBox="0 0 320 185" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <svg class="scale-svg" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                   <defs>
-                    <linearGradient id="sg-metal" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%"   stop-color="#94a3b8"/>
-                      <stop offset="35%"  stop-color="#e2e8f0"/>
-                      <stop offset="65%"  stop-color="#e2e8f0"/>
-                      <stop offset="100%" stop-color="#94a3b8"/>
-                    </linearGradient>
-                    <linearGradient id="sg-pole" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%"   stop-color="#94a3b8"/>
-                      <stop offset="40%"  stop-color="#f1f5f9"/>
-                      <stop offset="60%"  stop-color="#f1f5f9"/>
-                      <stop offset="100%" stop-color="#94a3b8"/>
-                    </linearGradient>
-                    <linearGradient id="sg-base" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%"   stop-color="#6b7280"/>
-                      <stop offset="100%" stop-color="#374151"/>
-                    </linearGradient>
-                    <linearGradient id="sg-glass" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%"   stop-color="#a7f3d0" stop-opacity="0.55"/>
-                      <stop offset="100%" stop-color="#6ee7b7" stop-opacity="0.2"/>
-                    </linearGradient>
-                    <radialGradient id="sg-gauge" cx="38%" cy="38%" r="62%">
-                      <stop offset="0%"   stop-color="#f8fafc"/>
-                      <stop offset="100%" stop-color="#cbd5e1"/>
-                    </radialGradient>
-                    <filter id="sg-shadow" x="-20%" y="-20%" width="140%" height="140%">
-                      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="rgba(0,0,0,0.15)"/>
+                    <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="8" result="blur"/>
+                      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
                     </filter>
+                    <linearGradient id="beam-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%"   stop-color="#3b82f6"/>
+                      <stop offset="50%"  stop-color="#1e293b"/>
+                      <stop offset="100%" stop-color="#8b5cf6"/>
+                    </linearGradient>
+                    <linearGradient id="pillar-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%"   stop-color="#475569"/>
+                      <stop offset="100%" stop-color="#0f172a"/>
+                    </linearGradient>
+                    <style>
+                      /* Idle animation (when no data) */
+                      .scale-beam-svg.idle {
+                        animation: balanceTilt 4s ease-in-out infinite alternate;
+                        transform-origin: 250px 110px;
+                      }
+                      .scale-pan-svg.idle-left {
+                        animation: counterTiltLeft 4s ease-in-out infinite alternate;
+                        transform-origin: 80px 110px;
+                      }
+                      .scale-pan-svg.idle-right {
+                        animation: counterTiltRight 4s ease-in-out infinite alternate;
+                        transform-origin: 420px 110px;
+                      }
+                      @keyframes balanceTilt {
+                        0%   { transform: rotate(-14deg); }
+                        100% { transform: rotate(14deg); }
+                      }
+                      @keyframes counterTiltLeft {
+                        0%   { transform: rotate(14deg); }
+                        100% { transform: rotate(-14deg); }
+                      }
+                      @keyframes counterTiltRight {
+                        0%   { transform: rotate(14deg); }
+                        100% { transform: rotate(-14deg); }
+                      }
+                      /* Heavy pan highlight */
+                      #scale-pan-left.heavy  ellipse:last-child { stroke: #10b981 !important; stroke-width: 2.5; filter: url(#neon-glow); }
+                      #scale-pan-right.heavy ellipse:last-child { stroke: #ef4444 !important; stroke-width: 2.5; filter: url(#neon-glow); }
+                    </style>
                   </defs>
 
-                  <!-- Base platform -->
-                  <rect x="90" y="168" width="140" height="14" rx="5" fill="url(#sg-base)" filter="url(#sg-shadow)"/>
-                  <rect x="100" y="166" width="120" height="4" rx="2" fill="#9ca3af" opacity="0.35"/>
+                  <!-- Decorative rings -->
+                  <circle cx="250" cy="220" r="190" fill="none" stroke="#475569" stroke-width="1" opacity="0.1"/>
+                  <circle cx="250" cy="220" r="140" fill="none" stroke="#475569" stroke-width="1" opacity="0.05"/>
 
-                  <!-- Pole -->
-                  <rect x="156" y="58" width="8" height="112" rx="4" fill="url(#sg-pole)"/>
+                  <!-- Pillar (static) -->
+                  <path d="M 140 430 Q 250 410 360 430 L 380 455 Q 250 445 120 455 Z" fill="url(#pillar-grad)" opacity="0.95"/>
+                  <rect x="180" y="415" width="140" height="15" rx="7" fill="#1e293b"/>
+                  <rect x="242" y="110" width="16" height="310" rx="8" fill="url(#pillar-grad)"/>
+                  <line x1="250" y1="130" x2="250" y2="410" stroke="#10b981" stroke-width="2.5" opacity="0.6" filter="url(#neon-glow)"/>
+                  <circle cx="250" cy="110" r="20" fill="#0f172a" stroke="#10b981" stroke-width="3"/>
+                  <circle cx="250" cy="110" r="8" fill="#10b981" filter="url(#neon-glow)"/>
 
-                  <!-- Top collar -->
-                  <ellipse cx="160" cy="59" rx="11" ry="4" fill="#94a3b8"/>
-
-                  <!-- Gauge outer ring -->
-                  <circle cx="160" cy="44" r="22" fill="none" stroke="#94a3b8" stroke-width="2.5" filter="url(#sg-shadow)"/>
-                  <!-- Gauge face -->
-                  <circle cx="160" cy="44" r="18" fill="url(#sg-gauge)"/>
-                  <!-- Gauge tick marks -->
-                  <line x1="160" y1="27" x2="160" y2="32" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
-                  <line x1="160" y1="56" x2="160" y2="61" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
-                  <line x1="143" y1="44" x2="148" y2="44" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
-                  <line x1="172" y1="44" x2="177" y2="44" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
-                  <!-- Gauge center gear -->
-                  <circle cx="160" cy="44" r="5" fill="#94a3b8"/>
-                  <circle cx="160" cy="44" r="2.5" fill="#e2e8f0"/>
-
-                  <!-- ═══ BEAM GROUP (rotates around pivot 160,44) ═══ -->
-                  <g id="scale-beam" class="scale-beam-svg">
-
-                    <!-- Beam bar -->
-                    <rect x="55" y="41" width="210" height="6" rx="3" fill="url(#sg-metal)"/>
-                    <!-- End knobs -->
-                    <circle cx="62"  cy="44" r="5" fill="#94a3b8"/>
-                    <circle cx="258" cy="44" r="5" fill="#94a3b8"/>
-
-                    <!-- Left cables (V-shape) -->
-                    <line x1="56"  y1="48" x2="40"  y2="116" stroke="#94a3b8" stroke-width="1.4" opacity="0.85"/>
-                    <line x1="68"  y1="48" x2="84"  y2="116" stroke="#94a3b8" stroke-width="1.4" opacity="0.85"/>
-
-                    <!-- Right cables (V-shape) -->
-                    <line x1="252" y1="48" x2="236" y2="116" stroke="#94a3b8" stroke-width="1.4" opacity="0.85"/>
-                    <line x1="264" y1="48" x2="280" y2="116" stroke="#94a3b8" stroke-width="1.4" opacity="0.85"/>
+                  <!-- Beam group — JS controls transform, idle class adds animation -->
+                  <g id="scale-beam" class="scale-beam-svg idle">
+                    <path d="M 80 110 Q 250 82 420 110 Q 250 128 80 110 Z" fill="url(#beam-grad)"/>
+                    <line x1="85" y1="110" x2="415" y2="110" stroke="#10b981" stroke-width="2" opacity="0.5" filter="url(#neon-glow)"/>
 
                     <!-- Left pan (income) -->
-                    <g id="scale-pan-left" class="scale-pan-svg income-pan">
-                      <ellipse cx="62"  cy="120" rx="46" ry="7"   fill="url(#sg-glass)" stroke="#94a3b8" stroke-width="1.5"/>
-                      <ellipse cx="62"  cy="116" rx="46" ry="4.5" fill="none"           stroke="rgba(167,243,208,0.6)" stroke-width="1"/>
-                      <ellipse cx="62"  cy="120" rx="32" ry="4.5" fill="none"           stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+                    <g id="scale-pan-left" class="scale-pan-svg idle-left">
+                      <line x1="80" y1="110" x2="30"  y2="280" stroke="#64748b" stroke-width="1.5" opacity="0.8"/>
+                      <line x1="80" y1="110" x2="130" y2="280" stroke="#64748b" stroke-width="1.5" opacity="0.8"/>
+                      <path d="M 20 280 Q 80 325 140 280 Z" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+                      <ellipse cx="80" cy="280" rx="60" ry="12" fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+                      <ellipse cx="80" cy="280" rx="48" ry="8"  fill="none" stroke="#3b82f6" stroke-width="1.5" opacity="0.5" filter="url(#neon-glow)"/>
                     </g>
 
                     <!-- Right pan (expense) -->
-                    <g id="scale-pan-right" class="scale-pan-svg expense-pan">
-                      <ellipse cx="258" cy="120" rx="46" ry="7"   fill="url(#sg-glass)" stroke="#94a3b8" stroke-width="1.5"/>
-                      <ellipse cx="258" cy="116" rx="46" ry="4.5" fill="none"           stroke="rgba(167,243,208,0.6)" stroke-width="1"/>
-                      <ellipse cx="258" cy="120" rx="32" ry="4.5" fill="none"           stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+                    <g id="scale-pan-right" class="scale-pan-svg idle-right">
+                      <line x1="420" y1="110" x2="370" y2="280" stroke="#64748b" stroke-width="1.5" opacity="0.8"/>
+                      <line x1="420" y1="110" x2="470" y2="280" stroke="#64748b" stroke-width="1.5" opacity="0.8"/>
+                      <path d="M 360 280 Q 420 325 480 280 Z" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+                      <ellipse cx="420" cy="280" rx="60" ry="12" fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+                      <ellipse cx="420" cy="280" rx="48" ry="8"  fill="none" stroke="#8b5cf6" stroke-width="1.5" opacity="0.5" filter="url(#neon-glow)"/>
                     </g>
-
-                  </g><!-- end scale-beam -->
-
-                  <!-- Ground shadow -->
-                  <ellipse cx="160" cy="182" rx="65" ry="3" fill="rgba(0,0,0,0.07)"/>
+                  </g>
                 </svg>
 
                 <div class="scale-labels">

@@ -507,33 +507,21 @@ a { color: var(--indigo); text-decoration: none; }
 
 /* SVG Balance Scale */
 .scale-svg {
-  width: 280px;
+  width: 100%;
+  max-width: 340px;
   height: auto;
   overflow: visible;
-  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.10));
 }
 
-/* Beam rotation — pivot at gauge center (160, 44) in SVG coords */
+/* Beam rotation — pivot at 250,110 — used when JS overrides idle animation */
 .scale-beam-svg {
-  transform-origin: 160px 44px;
+  transform-origin: 250px 110px;
   transition: transform 0.75s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* Pan glow when "heavy" */
-.scale-pan-svg ellipse { transition: fill 0.5s ease, filter 0.5s ease; }
-
-#scale-pan-left.heavy  ellipse:first-child {
-  fill: rgba(34, 197, 94, 0.45);
-  filter: drop-shadow(0 0 6px rgba(34,197,94,0.5));
-}
-#scale-pan-right.heavy ellipse:first-child {
-  fill: rgba(239, 68, 68, 0.35);
-  filter: drop-shadow(0 0 6px rgba(239,68,68,0.45));
 }
 
 .scale-labels {
   display: flex; justify-content: space-between;
-  width: 260px;
+  width: 280px;
   font-size: 11px; color: var(--text-3); font-weight: 500;
 }
 

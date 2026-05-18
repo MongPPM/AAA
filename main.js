@@ -545,21 +545,38 @@ function setTxViewMode(mode) {
 }
 
 function updateBalanceScale(incomeList, expenseList) {
-  const beam       = document.getElementById('scale-beam');
-  const panLeft    = document.getElementById('scale-pan-left');
-  const panRight   = document.getElementById('scale-pan-right');
-  const verdict    = document.getElementById('scale-verdict');
-  const incomeEl   = document.getElementById('scale-income-total');
-  const expenseEl  = document.getElementById('scale-expense-total');
+  const beam      = document.getElementById('scale-beam');
+  const panLeft   = document.getElementById('scale-pan-left');
+  const panRight  = document.getElementById('scale-pan-right');
+  const verdict   = document.getElementById('scale-verdict');
+  const incomeEl  = document.getElementById('scale-income-total');
+  const expenseEl = document.getElementById('scale-expense-total');
   if (!beam) return;
 
-  const inc = incomeList.reduce((s, t) => s + Number(t.amount), 0);
-  const exp = expenseList.reduce((s, t) => s + Number(t.amount), 0);
+  const inc   = incomeList.reduce((s, t) => s + Number(t.amount), 0);
+  const exp   = expenseList.reduce((s, t) => s + Number(t.amount), 0);
   const total = inc + exp;
 
-  // Tilt: expense heavier → clockwise (+), income heavier → counter-clockwise (-)
-  const angle = total > 0 ? ((exp - inc) / total) * 22 : 0;
-  beam.style.transform = `rotate(${angle}deg)`;
+  if (total === 0) {
+    // No data → play idle animation
+    beam.classList.add('idle');
+    panLeft.classList.add('idle-left');
+    panRight.classList.add('idle-right');
+    beam.style.transform     = '';
+    panLeft.style.transform  = '';
+    panRight.style.transform = '';
+  } else {
+    // Has data → stop animation, apply real tilt
+    beam.classList.remove('idle');
+    panLeft.classList.remove('idle-left');
+    panRight.classList.remove('idle-right');
+    // Tilt: expense heavier → clockwise (+), income heavier → counter-clockwise (-)
+    const angle = ((exp - inc) / total) * 22;
+    beam.style.transform     = `rotate(${angle}deg)`;
+    // Counter-rotate pans so they stay level
+    panLeft.style.transform  = `rotate(${-angle}deg)`;
+    panRight.style.transform = `rotate(${-angle}deg)`;
+  }
 
   panLeft.classList.toggle('heavy',  inc > exp);
   panRight.classList.toggle('heavy', exp > inc);
