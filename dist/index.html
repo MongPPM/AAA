@@ -14,7 +14,7 @@
     <link rel="icon" type="image/png" href="/assets/logo-D-a2ymq_.png" />
     <link rel="apple-touch-icon" href="/assets/logo-D-a2ymq_.png" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script type="module" crossorigin src="/assets/index-634ONwp-.js"></script>
+    <script type="module" crossorigin src="/assets/index-DCALndLG.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-AwAWQOq2.css">
   </head>
   <body>
@@ -199,10 +199,6 @@
               <h2 class="section-title" data-i18n="tx.title">รายการทั้งหมด</h2>
               <div class="tx-controls">
                 <div class="view-mode-toggle">
-                  <button class="view-mode-btn active" id="btn-view-list" title="มุมมองรายการ" data-i18n="tx.viewList">☰ รายการ</button>
-                  <button class="view-mode-btn" id="btn-view-split" title="แยกรายรับ/รายจ่าย" data-i18n="tx.viewSplit">⊞ แยก</button>
-                </div>
-                <div class="view-mode-toggle">
                   <button class="view-mode-btn" id="btn-range-all" title="ทุกรายการ" data-i18n="tx.rangeAll">ทั้งหมด</button>
                   <button class="view-mode-btn active" id="btn-range-cycle" title="รอบบิลปัจจุบัน" data-i18n="tx.rangeCycle">รอบบิล</button>
                 </div>
@@ -228,121 +224,6 @@
                 <div class="empty-state" id="empty-all">
                   <div class="empty-icon">📋</div>
                   <p data-i18n="tx.noResults">ไม่มีรายการที่ตรงกับเงื่อนไข</p>
-                </div>
-              </div>
-            </div>
-            <!-- Split view -->
-            <div id="tx-split-view" style="display:none">
-              <!-- Balance Scale -->
-              <div class="balance-scale" id="balance-scale">
-                <div class="scale-amounts">
-                  <span class="scale-amount income" id="scale-income-total">฿0.00</span>
-                  <span class="scale-verdict" id="scale-verdict" data-i18n="tx.scale.equal">เท่ากัน</span>
-                  <span class="scale-amount expense" id="scale-expense-total">฿0.00</span>
-                </div>
-
-                <!-- SVG Balance Scale -->
-                <svg class="scale-svg" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <defs>
-                    <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
-                      <feGaussianBlur stdDeviation="8" result="blur"/>
-                      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                    </filter>
-                    <linearGradient id="beam-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%"   stop-color="#3b82f6"/>
-                      <stop offset="50%"  stop-color="#1e293b"/>
-                      <stop offset="100%" stop-color="#8b5cf6"/>
-                    </linearGradient>
-                    <linearGradient id="pillar-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%"   stop-color="#475569"/>
-                      <stop offset="100%" stop-color="#0f172a"/>
-                    </linearGradient>
-                    <style>
-                      /* Idle animation (when no data) */
-                      .scale-beam-svg.idle {
-                        animation: balanceTilt 4s ease-in-out infinite alternate;
-                        transform-origin: 250px 110px;
-                      }
-                      .scale-pan-svg.idle-left {
-                        animation: counterTiltLeft 4s ease-in-out infinite alternate;
-                        transform-origin: 80px 110px;
-                      }
-                      .scale-pan-svg.idle-right {
-                        animation: counterTiltRight 4s ease-in-out infinite alternate;
-                        transform-origin: 420px 110px;
-                      }
-                      @keyframes balanceTilt {
-                        0%   { transform: rotate(-14deg); }
-                        100% { transform: rotate(14deg); }
-                      }
-                      @keyframes counterTiltLeft {
-                        0%   { transform: rotate(14deg); }
-                        100% { transform: rotate(-14deg); }
-                      }
-                      @keyframes counterTiltRight {
-                        0%   { transform: rotate(14deg); }
-                        100% { transform: rotate(-14deg); }
-                      }
-                      /* Heavy pan highlight */
-                      #scale-pan-left.heavy  ellipse:last-child { stroke: #10b981 !important; stroke-width: 2.5; filter: url(#neon-glow); }
-                      #scale-pan-right.heavy ellipse:last-child { stroke: #ef4444 !important; stroke-width: 2.5; filter: url(#neon-glow); }
-                    </style>
-                  </defs>
-
-                  <!-- Decorative rings -->
-                  <circle cx="250" cy="220" r="190" fill="none" stroke="#475569" stroke-width="1" opacity="0.1"/>
-                  <circle cx="250" cy="220" r="140" fill="none" stroke="#475569" stroke-width="1" opacity="0.05"/>
-
-                  <!-- Pillar (static) -->
-                  <path d="M 140 430 Q 250 410 360 430 L 380 455 Q 250 445 120 455 Z" fill="url(#pillar-grad)" opacity="0.95"/>
-                  <rect x="180" y="415" width="140" height="15" rx="7" fill="#1e293b"/>
-                  <rect x="242" y="110" width="16" height="310" rx="8" fill="url(#pillar-grad)"/>
-                  <line x1="250" y1="130" x2="250" y2="410" stroke="#10b981" stroke-width="2.5" opacity="0.6" filter="url(#neon-glow)"/>
-                  <circle cx="250" cy="110" r="20" fill="#0f172a" stroke="#10b981" stroke-width="3"/>
-                  <circle cx="250" cy="110" r="8" fill="#10b981" filter="url(#neon-glow)"/>
-
-                  <!-- Beam group — JS controls transform, idle class adds animation -->
-                  <g id="scale-beam" class="scale-beam-svg idle">
-                    <path d="M 80 110 Q 250 82 420 110 Q 250 128 80 110 Z" fill="url(#beam-grad)"/>
-                    <line x1="85" y1="110" x2="415" y2="110" stroke="#10b981" stroke-width="2" opacity="0.5" filter="url(#neon-glow)"/>
-
-                    <!-- Left pan (income) -->
-                    <g id="scale-pan-left" class="scale-pan-svg idle-left">
-                      <line x1="80" y1="110" x2="30"  y2="280" stroke="#64748b" stroke-width="1.5" opacity="0.8"/>
-                      <line x1="80" y1="110" x2="130" y2="280" stroke="#64748b" stroke-width="1.5" opacity="0.8"/>
-                      <path d="M 20 280 Q 80 325 140 280 Z" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
-                      <ellipse cx="80" cy="280" rx="60" ry="12" fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
-                      <ellipse cx="80" cy="280" rx="48" ry="8"  fill="none" stroke="#3b82f6" stroke-width="1.5" opacity="0.5" filter="url(#neon-glow)"/>
-                    </g>
-
-                    <!-- Right pan (expense) -->
-                    <g id="scale-pan-right" class="scale-pan-svg idle-right">
-                      <line x1="420" y1="110" x2="370" y2="280" stroke="#64748b" stroke-width="1.5" opacity="0.8"/>
-                      <line x1="420" y1="110" x2="470" y2="280" stroke="#64748b" stroke-width="1.5" opacity="0.8"/>
-                      <path d="M 360 280 Q 420 325 480 280 Z" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
-                      <ellipse cx="420" cy="280" rx="60" ry="12" fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
-                      <ellipse cx="420" cy="280" rx="48" ry="8"  fill="none" stroke="#8b5cf6" stroke-width="1.5" opacity="0.5" filter="url(#neon-glow)"/>
-                    </g>
-                  </g>
-                </svg>
-
-                <div class="scale-labels">
-                  <span data-i18n="tx.scale.income">รายรับ</span>
-                  <span data-i18n="tx.scale.expense">รายจ่าย</span>
-                </div>
-              </div>
-              <div class="tx-split-grid">
-                <div class="tx-split-col income-col">
-                  <div class="tx-split-header income" data-i18n="tx.split.income">💰 รายรับ</div>
-                  <div class="transaction-list" id="split-income-list">
-                    <div class="empty-state" id="empty-split-income"><div class="empty-icon">💰</div><p data-i18n="tx.split.emptyIncome">ยังไม่มีรายรับ</p></div>
-                  </div>
-                </div>
-                <div class="tx-split-col expense-col">
-                  <div class="tx-split-header expense" data-i18n="tx.split.expense">💸 รายจ่าย</div>
-                  <div class="transaction-list" id="split-expense-list">
-                    <div class="empty-state" id="empty-split-expense"><div class="empty-icon">💸</div><p data-i18n="tx.split.emptyExpense">ยังไม่มีรายจ่าย</p></div>
-                  </div>
                 </div>
               </div>
             </div>

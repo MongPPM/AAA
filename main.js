@@ -65,7 +65,7 @@ let pendingDeleteId = null;
 let editingId    = null;
 let currentView  = 'dashboard';
 let cutoffDay    = parseInt(localStorage.getItem('mf_cutoff_day')) || 1;
-let txViewMode   = 'list';  // 'list' | 'split'
+let txViewMode   = 'list';
 let txRangeMode  = 'cycle'; // 'all' | 'cycle'
 let txSearch     = '';      // search query
 let pendingImageData     = null;
@@ -580,62 +580,7 @@ function openSlipLightbox(txId) {
 // ========================
 function setTxViewMode(mode) {
   txViewMode = mode;
-  const isSplit = mode === 'split';
-  document.getElementById('tx-list-view').style.display  = isSplit ? 'none' : '';
-  document.getElementById('tx-split-view').style.display = isSplit ? '' : 'none';
-  document.getElementById('filter-type').style.display   = isSplit ? 'none' : '';
-  document.getElementById('btn-view-list').classList.toggle('active', !isSplit);
-  document.getElementById('btn-view-split').classList.toggle('active', isSplit);
   renderAllTransactions();
-}
-
-function updateBalanceScale(incomeList, expenseList) {
-  const beam      = document.getElementById('scale-beam');
-  const panLeft   = document.getElementById('scale-pan-left');
-  const panRight  = document.getElementById('scale-pan-right');
-  const verdict   = document.getElementById('scale-verdict');
-  const incomeEl  = document.getElementById('scale-income-total');
-  const expenseEl = document.getElementById('scale-expense-total');
-  if (!beam) return;
-
-  const inc   = incomeList.reduce((s, t) => s + Number(t.amount), 0);
-  const exp   = expenseList.reduce((s, t) => s + Number(t.amount), 0);
-  const total = inc + exp;
-
-  if (total === 0) {
-    // No data → play idle animation
-    beam.classList.add('idle');
-    panLeft.classList.add('idle-left');
-    panRight.classList.add('idle-right');
-    beam.style.transform     = '';
-    panLeft.style.transform  = '';
-    panRight.style.transform = '';
-  } else {
-    // Has data → stop animation, apply real tilt
-    beam.classList.remove('idle');
-    panLeft.classList.remove('idle-left');
-    panRight.classList.remove('idle-right');
-    // Tilt: expense heavier → clockwise (+), income heavier → counter-clockwise (-)
-    const angle = ((exp - inc) / total) * 22;
-    beam.style.transform     = `rotate(${angle}deg)`;
-    // Counter-rotate pans so they stay level
-    panLeft.style.transform  = `rotate(${-angle}deg)`;
-    panRight.style.transform = `rotate(${-angle}deg)`;
-  }
-
-  panLeft.classList.toggle('heavy',  inc > exp);
-  panRight.classList.toggle('heavy', exp > inc);
-
-  if (incomeEl)  incomeEl.textContent  = formatCurrency(inc);
-  if (expenseEl) expenseEl.textContent = formatCurrency(exp);
-
-  if (verdict) {
-    const diff = Math.abs(inc - exp);
-    if (total === 0)    { verdict.textContent = t('tx.scale.noItems'); verdict.className = 'scale-verdict'; }
-    else if (inc > exp) { verdict.textContent = `+${formatCurrency(diff)}`; verdict.className = 'scale-verdict positive'; }
-    else if (exp > inc) { verdict.textContent = `-${formatCurrency(diff)}`; verdict.className = 'scale-verdict negative'; }
-    else                { verdict.textContent = t('tx.scale.equal'); verdict.className = 'scale-verdict'; }
-  }
 }
 
 function setTxRangeMode(mode) {
@@ -664,24 +609,13 @@ function applySearchFilter(list) {
 }
 
 function renderAllTransactions() {
-  const filterCat = document.getElementById('filter-category').value;
-  if (txViewMode === 'split') {
-    let income  = applyRangeFilter(transactions.filter(t => t.type === 'income')).sort((a, b) => new Date(b.date) - new Date(a.date));
-    let expense = applyRangeFilter(transactions.filter(t => t.type === 'expense')).sort((a, b) => new Date(b.date) - new Date(a.date));
-    if (filterCat !== 'all') { income = income.filter(t => t.category === filterCat); expense = expense.filter(t => t.category === filterCat); }
-    income  = applySearchFilter(income);
-    expense = applySearchFilter(expense);
-    updateBalanceScale(income, expense);
-    renderTimelineList('split-income-list',  income,  'empty-split-income');
-    renderTimelineList('split-expense-list', expense, 'empty-split-expense');
-  } else {
-    const filterType = document.getElementById('filter-type').value;
-    let filtered = applyRangeFilter([...transactions]).sort((a, b) => new Date(b.date) - new Date(a.date));
-    if (filterType !== 'all') filtered = filtered.filter(t => t.type === filterType);
-    if (filterCat  !== 'all') filtered = filtered.filter(t => t.category === filterCat);
-    filtered = applySearchFilter(filtered);
-    renderTimelineList('all-list', filtered, 'empty-all');
-  }
+  const filterType = document.getElementById('filter-type').value;
+  const filterCat  = document.getElementById('filter-category').value;
+  let filtered = applyRangeFilter([...transactions]).sort((a, b) => new Date(b.date) - new Date(a.date));
+  if (filterType !== 'all') filtered = filtered.filter(t => t.type === filterType);
+  if (filterCat  !== 'all') filtered = filtered.filter(t => t.category === filterCat);
+  filtered = applySearchFilter(filtered);
+  renderTimelineList('all-list', filtered, 'empty-all');
 }
 
 function renderTimelineList(listId, items, emptyId) {
@@ -2027,8 +1961,7 @@ function init() {
   document.getElementById('btn-pay-omise').addEventListener('click', handleUpgradePayment);
 
   // Transaction view mode toggle
-  document.getElementById('btn-view-list')?.addEventListener('click',   () => setTxViewMode('list'));
-  document.getElementById('btn-view-split')?.addEventListener('click',  () => setTxViewMode('split'));
+  document.getElementById('btn-view-list')?.addEventListener('click', () => setTxViewMode('list'));
   document.getElementById('btn-range-all')?.addEventListener('click',   () => setTxRangeMode('all'));
   document.getElementById('btn-range-cycle')?.addEventListener('click', () => setTxRangeMode('cycle'));
 
