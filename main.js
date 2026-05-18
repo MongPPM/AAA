@@ -510,10 +510,11 @@ function renderDashboard() {
   document.getElementById('total-income').textContent  = formatCurrency(income);
   document.getElementById('total-expense').textContent = formatCurrency(expense);
 
-  const total = income + expense;
-  const expenseRatio = total > 0 ? (expense / total) * 100 : 0;
+  // Ratio = expense as % of income (how much of income was spent)
+  const expenseRatio = income > 0 ? Math.min((expense / income) * 100, 100) : (expense > 0 ? 100 : 0);
+  const savedRatio   = Math.max(0, 100 - expenseRatio);
   document.getElementById('ratio-fill').style.width = expenseRatio + '%';
-  document.getElementById('ratio-income-label').textContent  = `${t('dash.ratio.income')} ${(100 - expenseRatio).toFixed(0)}%`;
+  document.getElementById('ratio-income-label').textContent  = `${t('dash.ratio.income')} ${savedRatio.toFixed(0)}%`;
   document.getElementById('ratio-expense-label').textContent = `${t('dash.ratio.expense')} ${expenseRatio.toFixed(0)}%`;
 
   const balanceTrend = document.getElementById('balance-trend');
@@ -1342,18 +1343,31 @@ async function deleteRecurring(id) {
 }
 
 function getRecurringStatus(item) {
-  const today = new Date();
+  const today     = new Date();
   const todayDay  = today.getDate();
   const thisMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   const isDone    = item.installments && (item.paidCount || 0) >= item.installments;
   const paidThisMonth = item.lastPaidDate && item.lastPaidDate.startsWith(thisMonth);
-  if (isDone)        return { key: 'done',    label: '✅ ครบทุกงวดแล้ว',    canPay: false };
-  if (paidThisMonth) return { key: 'paid',    label: '✅ จ่ายแล้วเดือนนี้',   canPay: false };
+  const neverPaid = !(item.paidCount || 0) && !item.lastPaidDate;
+
+  if (isDone)        return { key: 'done', label: '✅ ครบทุกงวดแล้ว',  canPay: false };
+  if (paidThisMonth) return { key: 'paid', label: '✅ จ่ายแล้วเดือนนี้', canPay: false };
+
   const daysUntil = item.dayOfMonth - todayDay;
-  if (daysUntil < 0) return { key: 'overdue', label: '🔴 เลยกำหนดแล้ว',      canPay: true  };
-  if (daysUntil === 0) return { key: 'overdue', label: '🔴 ถึงกำหนดวันนี้!',  canPay: true  };
-  if (daysUntil <= 3) return { key: 'soon',   label: `🟡 อีก ${daysUntil} วัน`, canPay: true };
-  return { key: 'pending', label: `⏳ อีก ${daysUntil} วัน`, canPay: true };
+
+  // Brand-new item (never paid) and due date already passed this month
+  // → treat as starting next month, don't show as overdue
+  if (neverPaid && daysUntil < 0) {
+    const nextDate   = new Date(today.getFullYear(), today.getMonth() + 1, item.dayOfMonth);
+    const daysToNext = Math.ceil((nextDate - today) / 86400000);
+    const nextMonth  = String(today.getMonth() + 2).padStart(2, '0');
+    return { key: 'pending', label: `⏳ ครั้งแรก วันที่ ${item.dayOfMonth}/${nextMonth} (อีก ${daysToNext} วัน)`, canPay: false };
+  }
+
+  if (daysUntil < 0)   return { key: 'overdue', label: '🔴 เลยกำหนดแล้ว ยังไม่ได้จ่าย', canPay: true };
+  if (daysUntil === 0) return { key: 'overdue', label: '🔴 ถึงกำหนดวันนี้!',             canPay: true };
+  if (daysUntil <= 3)  return { key: 'soon',    label: `🟡 อีก ${daysUntil} วัน`,         canPay: true };
+  return { key: 'pending', label: `⏳ อีก ${daysUntil} วัน`, canPay: false };
 }
 
 function renderRecurringList() {
