@@ -26,6 +26,7 @@ const STRINGS = {
     'sidebar.signout':   'ออกจากระบบ',
     // Top bar
     'topbar.add': '+ เพิ่มรายการ',
+    'topbar.add.text': 'เพิ่มรายการ',
     // Dashboard
     'dash.balance':          'ยอดคงเหลือ',
     'dash.income':           'รายรับ',
@@ -202,6 +203,7 @@ const STRINGS = {
     'sidebar.signout':   'Sign Out',
     // Top bar
     'topbar.add': '+ Add',
+    'topbar.add.text': 'Add',
     // Dashboard
     'dash.balance':          'Balance',
     'dash.income':           'Income',
