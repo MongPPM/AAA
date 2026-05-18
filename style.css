@@ -1060,22 +1060,74 @@ a { color: var(--indigo); text-decoration: none; }
 }
 .btn-add-from-recurring:hover { background: var(--indigo); color: #fff; }
 
-/* Due banner in add modal */
-.recurring-due-banner {
-  background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3);
-  border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 14px;
+/* Recurring shortcuts in add modal */
+#recurring-shortcuts-wrap { margin-bottom: 4px; }
+
+.rec-shortcut-section { margin-bottom: 8px; }
+
+/* Urgent section (overdue / soon) */
+.rec-shortcut-section.urgent {
+  background: rgba(245,158,11,0.07);
+  border: 1px solid rgba(245,158,11,0.25);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
 }
-.recurring-due-title { font-size: 12px; font-weight: 600; color: #d97706; margin-bottom: 8px; }
+.rec-shortcut-label {
+  font-size: 11px; font-weight: 600; color: #d97706;
+  margin-bottom: 8px; letter-spacing: 0.01em;
+}
+
+/* Upcoming section (pending) */
+.rec-shortcut-section.upcoming { padding: 2px 0; }
+.rec-upcoming-toggle {
+  width: 100%; text-align: left; background: none; border: none;
+  font-size: 12px; color: var(--text-2); cursor: pointer; padding: 6px 4px;
+  font-family: inherit; display: flex; align-items: center; gap: 4px;
+}
+.rec-upcoming-toggle:hover { color: var(--text-1); }
+.toggle-arrow { transition: transform 0.2s; }
+.rec-upcoming-list { display: none; padding: 6px 0 2px; }
+.rec-upcoming-list.open { display: block; }
+.rec-upcoming-list.open + .rec-upcoming-toggle .toggle-arrow,
+.rec-upcoming-list.open ~ * .toggle-arrow { transform: rotate(180deg); }
+
+/* Chip redesign */
 .recurring-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .recurring-chip {
-  padding: 5px 10px; border: 1px solid rgba(245,158,11,0.4);
-  border-radius: 20px; background: white; color: var(--text-1);
-  font-size: 12px; cursor: pointer; transition: all 0.2s; font-family: inherit;
-  display: flex; align-items: center; gap: 4px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-1);
+  font-size: 12px; cursor: pointer;
+  transition: all 0.2s; font-family: inherit;
+  text-align: left;
 }
-.recurring-chip:hover, .recurring-chip.selected { background: var(--indigo); color: #fff; border-color: var(--indigo); }
-.chip-status { font-size: 10px; opacity: 0.85; }
-.recurring-chip.selected .chip-status { color: rgba(255,255,255,0.8); }
+.recurring-chip:hover { border-color: var(--indigo); background: var(--indigo-light); }
+.recurring-chip.selected { background: var(--indigo); color: #fff; border-color: var(--indigo); }
+
+/* Urgent chips */
+.recurring-chip.overdue { border-color: rgba(220,38,38,0.3); background: rgba(220,38,38,0.04); }
+.recurring-chip.overdue:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
+.recurring-chip.soon { border-color: rgba(217,119,6,0.3); background: rgba(217,119,6,0.04); }
+.recurring-chip.soon:hover { background: #d97706; color: #fff; border-color: #d97706; }
+
+.chip-emoji { font-size: 16px; flex-shrink: 0; }
+.chip-body { display: flex; flex-direction: column; gap: 1px; }
+.chip-name { font-weight: 500; font-size: 12px; }
+.chip-amt  { font-size: 11px; color: var(--text-2); }
+.recurring-chip.selected .chip-amt,
+.recurring-chip:hover .chip-amt { color: rgba(255,255,255,0.8); }
+.chip-badge {
+  font-size: 10px; padding: 2px 6px; border-radius: 8px;
+  white-space: nowrap; flex-shrink: 0; font-weight: 500;
+}
+.chip-badge.overdue { background: rgba(220,38,38,0.15); color: #dc2626; }
+.chip-badge.soon    { background: rgba(217,119,6,0.15);  color: #d97706; }
+.chip-badge.pending { background: rgba(99,102,241,0.1);  color: var(--indigo); }
+.recurring-chip.selected .chip-badge,
+.recurring-chip:hover .chip-badge { background: rgba(255,255,255,0.2); color: #fff; }
 
 /* Pro feature cards */
 .pro-feature-card { border-left: 3px solid var(--indigo); }

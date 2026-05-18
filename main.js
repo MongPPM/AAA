@@ -1474,37 +1474,77 @@ function openAddModal() {
   openModal('modal-overlay');
 }
 
-function renderRecurringDueBanner() {
-  // Remove old banner
-  const old = document.getElementById('recurring-due-banner');
-  if (old) old.remove();
-  if (!recurringItems.length) return;
-  // Items due today or overdue (not paid this month, not done)
-  const today = new Date();
-  const dueItems = recurringItems.filter(item => {
+function renderRecurringShortcuts(type) {
+  const wrap = document.getElementById('recurring-shortcuts-wrap');
+  if (!wrap) return;
+  // Only show for expense type
+  if (type !== 'expense' || !recurringItems.length) {
+    wrap.innerHTML = '';
+    wrap.style.display = 'none';
+    return;
+  }
+
+  // Separate into urgent (due/soon) and upcoming (pending far)
+  const urgent   = [];
+  const upcoming = [];
+  recurringItems.forEach(item => {
+    if (!item.active) return;
     const s = getRecurringStatus(item);
-    return s.canPay && (s.key === 'overdue' || s.key === 'soon');
+    if (s.key === 'done' || s.key === 'paid') return; // already handled
+    if (s.key === 'overdue' || s.key === 'soon') urgent.push({ item, s });
+    else upcoming.push({ item, s }); // pending / new items
   });
-  if (!dueItems.length) return;
-  const banner = document.createElement('div');
-  banner.id = 'recurring-due-banner';
-  banner.className = 'recurring-due-banner';
-  banner.innerHTML = `<div class="recurring-due-title">🔔 รายการประจำที่ถึงกำหนด</div><div class="recurring-chips">${
-    dueItems.map(item => {
-      const cat = getCategoryInfo('expense', item.category);
-      const s   = getRecurringStatus(item);
-      return `<button class="recurring-chip" data-id="${item.id}">${cat.emoji} ${escapeHtml(item.description)} ${formatCurrency(item.amount)} <span class="chip-status ${s.key}">${s.label}</span></button>`;
-    }).join('')
-  }</div>`;
-  // Insert before scan-section in modal
-  const scanSection = document.querySelector('#modal-overlay .scan-section');
-  if (scanSection) scanSection.before(banner);
-  banner.querySelectorAll('.recurring-chip').forEach(chip => {
+
+  if (!urgent.length && !upcoming.length) {
+    wrap.innerHTML = '';
+    wrap.style.display = 'none';
+    return;
+  }
+
+  const makeChip = ({ item, s }) => {
+    const cat = getCategoryInfo('expense', item.category);
+    return `<button class="recurring-chip ${s.key}" data-id="${item.id}">
+      <span class="chip-emoji">${cat.emoji}</span>
+      <span class="chip-body">
+        <span class="chip-name">${escapeHtml(item.description)}</span>
+        <span class="chip-amt">${formatCurrency(item.amount)}</span>
+      </span>
+      <span class="chip-badge ${s.key}">${s.label}</span>
+    </button>`;
+  };
+
+  let html = '';
+  if (urgent.length) {
+    html += `<div class="rec-shortcut-section urgent">
+      <div class="rec-shortcut-label">🔔 ถึงกำหนด — เลือกเพื่อกรอกอัตโนมัติ</div>
+      <div class="recurring-chips">${urgent.map(makeChip).join('')}</div>
+    </div>`;
+  }
+  if (upcoming.length) {
+    const detailId = 'rec-upcoming-detail';
+    html += `<div class="rec-shortcut-section upcoming">
+      <button class="rec-upcoming-toggle" onclick="document.getElementById('${detailId}').classList.toggle('open')">
+        📋 รายการประจำอื่นๆ (${upcoming.length}) <span class="toggle-arrow">▾</span>
+      </button>
+      <div id="${detailId}" class="rec-upcoming-list">
+        <div class="recurring-chips">${upcoming.map(makeChip).join('')}</div>
+      </div>
+    </div>`;
+  }
+
+  wrap.innerHTML = html;
+  wrap.style.display = '';
+  wrap.querySelectorAll('.recurring-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       const rec = recurringItems.find(r => r.id === chip.dataset.id);
       if (rec) prefillFromRecurring(rec);
     });
   });
+}
+
+// Keep for backward compat — now delegates to renderRecurringShortcuts
+function renderRecurringDueBanner() {
+  renderRecurringShortcuts(currentType);
 }
 
 function openEditModal(id) {
@@ -1528,6 +1568,7 @@ function setTransactionType(type) {
   document.getElementById('type-income').classList.toggle('active', type === 'income');
   document.getElementById('type-expense').classList.toggle('active', type === 'expense');
   populateCategorySelect(type);
+  renderRecurringShortcuts(type);
 }
 
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
