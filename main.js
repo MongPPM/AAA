@@ -67,6 +67,7 @@ let currentView  = 'dashboard';
 let cutoffDay    = parseInt(localStorage.getItem('mf_cutoff_day')) || 1;
 let txViewMode   = 'list';  // 'list' | 'split'
 let txRangeMode  = 'cycle'; // 'all' | 'cycle'
+let txSearch     = '';      // search query
 let pendingImageData     = null;
 let pendingImageMime     = null;
 let pendingImageStored   = null; // compressed base64 for saving
@@ -605,12 +606,27 @@ function applyRangeFilter(list) {
   return list.filter(t => isInCurrentCycle(t.date));
 }
 
+function applySearchFilter(list) {
+  const q = txSearch.trim().toLowerCase();
+  if (!q) return list;
+  return list.filter(t => {
+    const cat = getCategoryInfo(t.type, t.category);
+    return (
+      (t.description || '').toLowerCase().includes(q) ||
+      String(t.amount).includes(q) ||
+      (cat.label || '').toLowerCase().includes(q)
+    );
+  });
+}
+
 function renderAllTransactions() {
   const filterCat = document.getElementById('filter-category').value;
   if (txViewMode === 'split') {
     let income  = applyRangeFilter(transactions.filter(t => t.type === 'income')).sort((a, b) => new Date(b.date) - new Date(a.date));
     let expense = applyRangeFilter(transactions.filter(t => t.type === 'expense')).sort((a, b) => new Date(b.date) - new Date(a.date));
     if (filterCat !== 'all') { income = income.filter(t => t.category === filterCat); expense = expense.filter(t => t.category === filterCat); }
+    income  = applySearchFilter(income);
+    expense = applySearchFilter(expense);
     updateBalanceScale(income, expense);
     renderTimelineList('split-income-list',  income,  'empty-split-income');
     renderTimelineList('split-expense-list', expense, 'empty-split-expense');
@@ -619,6 +635,7 @@ function renderAllTransactions() {
     let filtered = applyRangeFilter([...transactions]).sort((a, b) => new Date(b.date) - new Date(a.date));
     if (filterType !== 'all') filtered = filtered.filter(t => t.type === filterType);
     if (filterCat  !== 'all') filtered = filtered.filter(t => t.category === filterCat);
+    filtered = applySearchFilter(filtered);
     renderTimelineList('all-list', filtered, 'empty-all');
   }
 }
@@ -1232,6 +1249,10 @@ function init() {
   // Filters
   document.getElementById('filter-type').addEventListener('change', renderAllTransactions);
   document.getElementById('filter-category').addEventListener('change', renderAllTransactions);
+  document.getElementById('tx-search').addEventListener('input', e => {
+    txSearch = e.target.value;
+    renderAllTransactions();
+  });
 
   // Image preview removal
   document.getElementById('btn-remove-image').addEventListener('click', clearPendingImage);
