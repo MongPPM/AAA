@@ -1013,20 +1013,39 @@ a { color: var(--indigo); text-decoration: none; }
   }
   .sidebar.open { transform: translateX(0); }
 
-  /* Main content — space for fixed top bar (56px) + fixed bottom nav (60px) */
-  .main-content { margin-left: 0; padding-top: 56px; padding-bottom: 72px; overflow-y: auto; }
-  /* No hamburger on mobile — bottom nav handles navigation */
+  /* ── App Shell: body locked, inner view scrolls ── */
+  html, body { height: 100%; overflow: hidden; }
+  .app-wrapper { height: 100%; overflow: hidden; }
+
+  /* main-content fills remaining height as flex column */
+  .main-content {
+    margin-left: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Top bar: natural first item in column → always pinned at top, no position:fixed needed */
   .menu-toggle { display: none; }
   .current-date { display: none; }
-  /* Fixed top bar — always visible while scrolling */
   .top-bar {
-    position: fixed; top: 0; left: 0; right: 0;
+    position: relative;          /* override sticky */
+    flex-shrink: 0;              /* never shrink */
     padding: 10px 14px; gap: 8px;
     z-index: 200;
   }
   /* Page title replaced by account info on mobile */
   .top-bar-title { display: none; }
-  .view { padding: 12px; gap: 12px; }
+
+  /* Each view is the scroll area — fills remaining space between top bar and bottom nav */
+  .view {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px 12px 80px;     /* 80px bottom clears the fixed bottom nav */
+    gap: 12px;
+  }
 
   /* Show mobile-only elements */
   .mobile-account { display: flex; }
@@ -1061,20 +1080,19 @@ a { color: var(--indigo); text-decoration: none; }
   /* Timeline header */
   .timeline-date-header { font-size: 12px; padding: 6px 8px; }
 
-  /* Modal */
-  .modal-overlay { left: 0; bottom: 64px; }
-  .modal { padding: 16px; max-height: calc(100vh - 80px); border-radius: var(--radius-md); }
+  /* Modal — overlay covers whole viewport */
+  .modal-overlay { left: 0; bottom: 0; }
+  .modal { padding: 16px; max-height: calc(100dvh - 80px); border-radius: var(--radius-md); }
   .image-preview-container img { max-height: 100px; }
 
   /* Upgrade modal */
   .plan-compare { gap: 10px; }
   .plan-col { padding: 14px 12px; }
 
-  /* Bottom nav */
+  /* Bottom nav — last item in flex column, always pinned at bottom */
   .bottom-nav {
     display: flex;
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
+    flex-shrink: 0;
     height: 60px;
     background: var(--bg-card);
     border-top: 1px solid var(--border);
