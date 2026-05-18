@@ -152,6 +152,11 @@ function updateUserProfile() {
   const name   = document.getElementById('user-name');
   if (avatar) avatar.src = currentUser.photoURL || '';
   if (name)   name.textContent = currentUser.displayName || currentUser.email || '';
+  // Mobile top bar
+  const mAvatar = document.getElementById('mobile-avatar');
+  const mName   = document.getElementById('mobile-user-name');
+  if (mAvatar) mAvatar.src = currentUser.photoURL || '';
+  if (mName)   mName.textContent = currentUser.displayName || currentUser.email || '';
 }
 
 // ========================
@@ -227,6 +232,14 @@ function updatePlanUI() {
     badge.textContent = userPlan === 'pro' ? '⭐ Pro' : 'Free';
     badge.className   = 'plan-badge ' + userPlan;
   }
+  // Mobile plan badge + updates button
+  const mobileBadge = document.getElementById('mobile-plan-badge');
+  if (mobileBadge) {
+    mobileBadge.textContent = userPlan === 'pro' ? '⭐ Pro' : 'Free';
+    mobileBadge.className   = 'plan-badge mobile-plan-badge ' + userPlan;
+  }
+  const mUpdatesBtn = document.getElementById('mobile-btn-updates');
+  if (mUpdatesBtn) mUpdatesBtn.style.display = userPlan === 'pro' ? 'none' : '';
   // Hide upgrade button if already Pro
   const upgradeBtn = document.getElementById('btn-upgrade');
   if (upgradeBtn) upgradeBtn.style.display = userPlan === 'pro' ? 'none' : '';
@@ -1262,8 +1275,17 @@ function init() {
   const devToggleBtn = document.getElementById('btn-dev-toggle');
   if (devToggleBtn) devToggleBtn.addEventListener('click', handleDevToggle);
 
-  // Sign out
+  // Sign out (sidebar + settings modal sign-out button for mobile)
   document.getElementById('btn-signout').addEventListener('click', handleSignOut);
+  document.getElementById('btn-signout-settings')?.addEventListener('click', handleSignOut);
+
+  // Mobile top bar buttons
+  document.getElementById('mobile-btn-updates')?.addEventListener('click', openChangelog);
+  document.getElementById('mobile-btn-settings')?.addEventListener('click', () => {
+    document.getElementById('input-cutoff-day').value = cutoffDay;
+    document.getElementById('select-language').value   = getLanguage();
+    openModal('settings-modal-overlay');
+  });
 
   // Changelog (button is now inside settings modal)
   document.getElementById('btn-changelog').addEventListener('click', openChangelog);

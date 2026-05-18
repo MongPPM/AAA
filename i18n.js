@@ -101,6 +101,7 @@ const STRINGS = {
     'settings.save':        'บันทึกการตั้งค่า',
     'settings.changelog':   '🆕 ประวัติอัปเดต',
     'settings.clearData':   '🗑️ ล้างข้อมูลทั้งหมด',
+    'settings.signout':     '🚪 ออกจากระบบ',
     // Upgrade Modal
     'upgrade.title':       '⭐ อัปเกรดเป็น Pro',
     'upgrade.free':        'Free',
@@ -276,6 +277,7 @@ const STRINGS = {
     'settings.save':        'Save Settings',
     'settings.changelog':   '🆕 Update History',
     'settings.clearData':   '🗑️ Clear All Data',
+    'settings.signout':     '🚪 Sign Out',
     // Upgrade Modal
     'upgrade.title':       '⭐ Upgrade to Pro',
     'upgrade.free':        'Free',

@@ -111,10 +111,25 @@
       <!-- Main Content -->
       <main class="main-content">
         <header class="top-bar">
+          <!-- Desktop: hamburger (hidden on mobile) -->
           <button class="menu-toggle" id="menu-toggle" aria-label="toggle menu">☰</button>
+
+          <!-- Mobile: account info on left (hidden on desktop) -->
+          <div class="mobile-account" id="mobile-account">
+            <img class="mobile-avatar" id="mobile-avatar" src="" alt="avatar" />
+            <div class="mobile-account-info">
+              <span class="mobile-user-name" id="mobile-user-name"></span>
+              <span class="plan-badge mobile-plan-badge" id="mobile-plan-badge">Free</span>
+            </div>
+          </div>
+
           <div class="top-bar-title" id="page-title" data-i18n="page.dashboard">ภาพรวม</div>
           <div class="top-bar-right">
             <div class="current-date" id="current-date"></div>
+            <!-- Mobile: updates button (Free plan only, hidden on desktop) -->
+            <button class="mobile-topbar-btn" id="mobile-btn-updates" title="อัปเดต" style="display:none">🆕</button>
+            <!-- Mobile: settings button (hidden on desktop) -->
+            <button class="mobile-topbar-btn" id="mobile-btn-settings" title="ตั้งค่า">⚙️</button>
             <button class="btn-add-primary" id="btn-open-modal">
               <span data-i18n="topbar.add">+ เพิ่มรายการ</span>
             </button>
@@ -396,6 +411,11 @@
           <!-- Clear All Data (moved from sidebar) -->
           <button class="btn-settings-action danger" id="btn-clear-all">
             <span data-i18n="settings.clearData">🗑️ ล้างข้อมูลทั้งหมด</span>
+          </button>
+
+          <!-- Sign out (for mobile; hidden on desktop) -->
+          <button class="btn-settings-action settings-signout" id="btn-signout-settings">
+            <span data-i18n="settings.signout">🚪 ออกจากระบบ</span>
           </button>
 
         </div>
