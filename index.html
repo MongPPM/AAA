@@ -139,17 +139,6 @@
         <!-- Dashboard View -->
         <section class="view active" id="view-dashboard">
 
-          <!-- Swinging Date Sign -->
-          <div class="section-card sign-card">
-            <iframe
-              src="/sign.html"
-              scrolling="no"
-              frameborder="0"
-              title="Date Sign"
-              id="sign-frame"
-            ></iframe>
-          </div>
-
           <div class="summary-cards">
             <div class="card card-balance">
               <div class="card-label" data-i18n="dash.balance">ยอดคงเหลือ</div>
@@ -681,6 +670,18 @@
         <button class="slip-lightbox-close" id="slip-lightbox-close">✕</button>
         <img id="slip-lightbox-img" src="" alt="สลิป" />
       </div>
+    </div>
+
+    <!-- Fixed Swinging Date Sign (always on top, nothing covers it) -->
+    <div class="sign-overlay" id="sign-overlay">
+      <iframe
+        src="/sign.html"
+        scrolling="no"
+        frameborder="0"
+        allowtransparency="true"
+        title="Date Sign"
+        id="sign-frame"
+      ></iframe>
     </div>
 
     <script type="module" src="./main.js"></script>
