@@ -226,15 +226,99 @@
                   <span class="scale-verdict" id="scale-verdict" data-i18n="tx.scale.equal">เท่ากัน</span>
                   <span class="scale-amount expense" id="scale-expense-total">฿0.00</span>
                 </div>
-                <div class="scale-visual">
-                  <div class="scale-pole"></div>
-                  <div class="scale-beam" id="scale-beam">
-                    <div class="scale-string left"></div>
-                    <div class="scale-string right"></div>
-                    <div class="scale-pan left" id="scale-pan-left">💰</div>
-                    <div class="scale-pan right" id="scale-pan-right">💸</div>
-                  </div>
-                </div>
+
+                <!-- SVG Balance Scale -->
+                <svg class="scale-svg" viewBox="0 0 320 185" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="sg-metal" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%"   stop-color="#94a3b8"/>
+                      <stop offset="35%"  stop-color="#e2e8f0"/>
+                      <stop offset="65%"  stop-color="#e2e8f0"/>
+                      <stop offset="100%" stop-color="#94a3b8"/>
+                    </linearGradient>
+                    <linearGradient id="sg-pole" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%"   stop-color="#94a3b8"/>
+                      <stop offset="40%"  stop-color="#f1f5f9"/>
+                      <stop offset="60%"  stop-color="#f1f5f9"/>
+                      <stop offset="100%" stop-color="#94a3b8"/>
+                    </linearGradient>
+                    <linearGradient id="sg-base" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%"   stop-color="#6b7280"/>
+                      <stop offset="100%" stop-color="#374151"/>
+                    </linearGradient>
+                    <linearGradient id="sg-glass" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%"   stop-color="#a7f3d0" stop-opacity="0.55"/>
+                      <stop offset="100%" stop-color="#6ee7b7" stop-opacity="0.2"/>
+                    </linearGradient>
+                    <radialGradient id="sg-gauge" cx="38%" cy="38%" r="62%">
+                      <stop offset="0%"   stop-color="#f8fafc"/>
+                      <stop offset="100%" stop-color="#cbd5e1"/>
+                    </radialGradient>
+                    <filter id="sg-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="rgba(0,0,0,0.15)"/>
+                    </filter>
+                  </defs>
+
+                  <!-- Base platform -->
+                  <rect x="90" y="168" width="140" height="14" rx="5" fill="url(#sg-base)" filter="url(#sg-shadow)"/>
+                  <rect x="100" y="166" width="120" height="4" rx="2" fill="#9ca3af" opacity="0.35"/>
+
+                  <!-- Pole -->
+                  <rect x="156" y="58" width="8" height="112" rx="4" fill="url(#sg-pole)"/>
+
+                  <!-- Top collar -->
+                  <ellipse cx="160" cy="59" rx="11" ry="4" fill="#94a3b8"/>
+
+                  <!-- Gauge outer ring -->
+                  <circle cx="160" cy="44" r="22" fill="none" stroke="#94a3b8" stroke-width="2.5" filter="url(#sg-shadow)"/>
+                  <!-- Gauge face -->
+                  <circle cx="160" cy="44" r="18" fill="url(#sg-gauge)"/>
+                  <!-- Gauge tick marks -->
+                  <line x1="160" y1="27" x2="160" y2="32" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="160" y1="56" x2="160" y2="61" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="143" y1="44" x2="148" y2="44" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="172" y1="44" x2="177" y2="44" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
+                  <!-- Gauge center gear -->
+                  <circle cx="160" cy="44" r="5" fill="#94a3b8"/>
+                  <circle cx="160" cy="44" r="2.5" fill="#e2e8f0"/>
+
+                  <!-- ═══ BEAM GROUP (rotates around pivot 160,44) ═══ -->
+                  <g id="scale-beam" class="scale-beam-svg">
+
+                    <!-- Beam bar -->
+                    <rect x="55" y="41" width="210" height="6" rx="3" fill="url(#sg-metal)"/>
+                    <!-- End knobs -->
+                    <circle cx="62"  cy="44" r="5" fill="#94a3b8"/>
+                    <circle cx="258" cy="44" r="5" fill="#94a3b8"/>
+
+                    <!-- Left cables (V-shape) -->
+                    <line x1="56"  y1="48" x2="40"  y2="116" stroke="#94a3b8" stroke-width="1.4" opacity="0.85"/>
+                    <line x1="68"  y1="48" x2="84"  y2="116" stroke="#94a3b8" stroke-width="1.4" opacity="0.85"/>
+
+                    <!-- Right cables (V-shape) -->
+                    <line x1="252" y1="48" x2="236" y2="116" stroke="#94a3b8" stroke-width="1.4" opacity="0.85"/>
+                    <line x1="264" y1="48" x2="280" y2="116" stroke="#94a3b8" stroke-width="1.4" opacity="0.85"/>
+
+                    <!-- Left pan (income) -->
+                    <g id="scale-pan-left" class="scale-pan-svg income-pan">
+                      <ellipse cx="62"  cy="120" rx="46" ry="7"   fill="url(#sg-glass)" stroke="#94a3b8" stroke-width="1.5"/>
+                      <ellipse cx="62"  cy="116" rx="46" ry="4.5" fill="none"           stroke="rgba(167,243,208,0.6)" stroke-width="1"/>
+                      <ellipse cx="62"  cy="120" rx="32" ry="4.5" fill="none"           stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+                    </g>
+
+                    <!-- Right pan (expense) -->
+                    <g id="scale-pan-right" class="scale-pan-svg expense-pan">
+                      <ellipse cx="258" cy="120" rx="46" ry="7"   fill="url(#sg-glass)" stroke="#94a3b8" stroke-width="1.5"/>
+                      <ellipse cx="258" cy="116" rx="46" ry="4.5" fill="none"           stroke="rgba(167,243,208,0.6)" stroke-width="1"/>
+                      <ellipse cx="258" cy="120" rx="32" ry="4.5" fill="none"           stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+                    </g>
+
+                  </g><!-- end scale-beam -->
+
+                  <!-- Ground shadow -->
+                  <ellipse cx="160" cy="182" rx="65" ry="3" fill="rgba(0,0,0,0.07)"/>
+                </svg>
+
                 <div class="scale-labels">
                   <span data-i18n="tx.scale.income">รายรับ</span>
                   <span data-i18n="tx.scale.expense">รายจ่าย</span>
