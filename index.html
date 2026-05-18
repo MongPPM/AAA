@@ -157,15 +157,15 @@
             </div>
           </div>
 
-          <div class="section-card">
-            <h2 class="section-title" data-i18n="dash.expenseRatio">สัดส่วนรายจ่าย</h2>
-            <div class="expense-ratio-bar">
-              <div class="ratio-fill" id="ratio-fill"></div>
-            </div>
-            <div class="ratio-labels">
-              <span id="ratio-income-label">รายรับ 0%</span>
-              <span id="ratio-expense-label">รายจ่าย 0%</span>
-            </div>
+          <!-- Chibi Finance Simulator (replaces expense ratio bar) -->
+          <div class="section-card chibi-card">
+            <iframe
+              id="chibi-frame"
+              src="/chibi.html"
+              scrolling="no"
+              frameborder="0"
+              title="Anime Finance Chibi"
+            ></iframe>
           </div>
 
           <!-- Savings Goal (Pro only) -->

@@ -510,12 +510,13 @@ function renderDashboard() {
   document.getElementById('total-income').textContent  = formatCurrency(income);
   document.getElementById('total-expense').textContent = formatCurrency(expense);
 
-  // Ratio = expense as % of income (how much of income was spent)
+  // Drive chibi HP = remaining money % (100 = all income saved, 0 = broke / expense ≥ income)
   const expenseRatio = income > 0 ? Math.min((expense / income) * 100, 100) : (expense > 0 ? 100 : 0);
-  const savedRatio   = Math.max(0, 100 - expenseRatio);
-  document.getElementById('ratio-fill').style.width = expenseRatio + '%';
-  document.getElementById('ratio-income-label').textContent  = `${t('dash.ratio.income')} ${savedRatio.toFixed(0)}%`;
-  document.getElementById('ratio-expense-label').textContent = `${t('dash.ratio.expense')} ${expenseRatio.toFixed(0)}%`;
+  const chibiHp      = Math.max(0, Math.round(100 - expenseRatio));
+  const chibiFrame   = document.getElementById('chibi-frame');
+  if (chibiFrame?.contentWindow) {
+    chibiFrame.contentWindow.postMessage({ type: 'setHp', hp: chibiHp }, '*');
+  }
 
   const balanceTrend = document.getElementById('balance-trend');
   if (balance > 0) balanceTrend.textContent = t('dash.balance.positive');
