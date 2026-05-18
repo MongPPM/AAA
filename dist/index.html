@@ -14,8 +14,8 @@
     <link rel="icon" type="image/png" href="/assets/logo-D-a2ymq_.png" />
     <link rel="apple-touch-icon" href="/assets/logo-D-a2ymq_.png" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script type="module" crossorigin src="/assets/index-B7JC0jdb.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DDZQzmCh.css">
+    <script type="module" crossorigin src="/assets/index-DHxl945Y.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-C0KxDVOu.css">
   </head>
   <body>
 
@@ -126,7 +126,6 @@
 
           <div class="top-bar-title" id="page-title" data-i18n="page.dashboard">ภาพรวม</div>
           <div class="top-bar-right">
-            <div class="current-date" id="current-date"></div>
             <!-- Mobile: updates button (Free plan only, hidden on desktop) -->
             <button class="mobile-topbar-btn" id="mobile-btn-updates" title="อัปเดต" style="display:none">🆕</button>
             <!-- Mobile: settings button (hidden on desktop) -->
@@ -140,6 +139,18 @@
 
         <!-- Dashboard View -->
         <section class="view active" id="view-dashboard">
+
+          <!-- Swinging Date Sign -->
+          <div class="section-card sign-card">
+            <iframe
+              src="/sign.html"
+              scrolling="no"
+              frameborder="0"
+              title="Date Sign"
+              id="sign-frame"
+            ></iframe>
+          </div>
+
           <div class="summary-cards">
             <div class="card card-balance">
               <div class="card-label" data-i18n="dash.balance">ยอดคงเหลือ</div>

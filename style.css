@@ -198,7 +198,6 @@ a { color: var(--indigo); text-decoration: none; }
   flex: 1;
 }
 .top-bar-right { display: flex; align-items: center; gap: 8px; }
-.current-date { font-size: 13px; color: var(--text-2); }
 
 /* Mobile account info (left side of top bar) */
 .mobile-account {
@@ -347,6 +346,23 @@ a { color: var(--indigo); text-decoration: none; }
   transition: opacity var(--transition);
 }
 .link-btn:hover { opacity: 0.7; }
+
+/* ========================
+   Sign Card (swinging date sign)
+   ======================== */
+.sign-card {
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #f8f4ed 0%, #f0e8d8 100%);
+}
+.sign-card iframe {
+  display: block;
+  width: 100%;
+  height: 210px;
+  border: none;
+  border-radius: var(--radius-md);
+}
 
 /* ========================
    Chibi Card (replaces Expense Ratio)

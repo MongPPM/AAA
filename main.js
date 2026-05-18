@@ -1592,15 +1592,6 @@ async function handleFormSubmit(e) {
 }
 
 // ========================
-// Current Date
-// ========================
-function updateCurrentDate() {
-  document.getElementById('current-date').textContent = new Date().toLocaleDateString(dateLocale(), {
-    weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
-  });
-}
-
-// ========================
 // Slip Scanning (Gemini 2.5 Flash via Vercel)
 // ========================
 function clearPendingImage() {
@@ -1822,7 +1813,7 @@ function openChangelog() {
 function init() {
   // Apply translations first (uses saved/detected language)
   applyI18n();
-  updateCurrentDate();
+
   populateCategorySelect('income');
   populateFilterCategory();
   const verEl = document.getElementById('app-version');
@@ -1934,7 +1925,7 @@ function init() {
       setLanguage(lang);
       applyI18n();
       // Refresh dynamic UI that uses t()
-      updateCurrentDate();
+    
       populateCategorySelect(currentType);
       populateFilterCategory();
       setSyncStatus(document.getElementById('sync-badge').className.replace('sync-badge ', '').trim() || 'offline');
