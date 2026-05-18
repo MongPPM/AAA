@@ -1342,7 +1342,8 @@ a { color: var(--indigo); text-decoration: none; }
   .card-balance { grid-column: 1; }
   .card { padding: 10px 14px; }
   .card-amount { font-size: 18px; }
-  .chibi-card iframe { width: 85%; height: 260px; }
+  .chibi-card { align-items: stretch; }
+  .chibi-card iframe { width: 100%; height: auto; aspect-ratio: 4/3; }
   .section-card { padding: 12px; }
 
   /* Stack controls vertically on small phones */
