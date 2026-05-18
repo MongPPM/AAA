@@ -1037,20 +1037,85 @@ a { color: var(--indigo); text-decoration: none; }
   flex-wrap: wrap;
 }
 .recurring-item:last-child { border-bottom: none; }
+.recurring-item.rec-overdue { background: rgba(239,68,68,0.04); border-radius: var(--radius-sm); padding: 10px 8px; margin: 0 -8px; }
+.recurring-item.rec-soon    { background: rgba(245,158,11,0.04); border-radius: var(--radius-sm); padding: 10px 8px; margin: 0 -8px; }
 .recurring-item-info { flex: 1; min-width: 0; }
-.recurring-item-title { font-size: 14px; font-weight: 600; color: var(--text-1); }
+.recurring-item-title { font-size: 14px; font-weight: 500; color: var(--text-1); }
 .recurring-item-meta { font-size: 12px; color: var(--text-2); margin-top: 2px; }
-.recurring-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
-.recurring-done-tag {
-  font-size: 11px; color: var(--green); font-weight: 600;
-  background: var(--green-light); padding: 2px 8px; border-radius: 100px;
-}
-.btn-pay-recurring {
+.recurring-item-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; flex-wrap: wrap; }
+
+/* Recurring status badges */
+.rec-status { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; margin-top: 4px; }
+.rec-status.done    { background: rgba(100,116,139,0.12); color: var(--text-2); }
+.rec-status.paid    { background: rgba(34,197,94,0.15);   color: #16a34a; }
+.rec-status.overdue { background: rgba(239,68,68,0.15);   color: #dc2626; }
+.rec-status.soon    { background: rgba(245,158,11,0.15);   color: #d97706; }
+.rec-status.pending { background: rgba(99,102,241,0.1);    color: var(--indigo); }
+
+/* Add-from-recurring button */
+.btn-add-from-recurring {
   padding: 5px 10px; font-size: 12px; border-radius: var(--radius-sm);
-  background: var(--green); color: white; font-family: inherit;
-  cursor: pointer; border: none; transition: opacity 0.15s;
+  border: 1px solid var(--indigo); background: transparent; color: var(--indigo);
+  font-family: inherit; cursor: pointer; transition: all 0.15s; white-space: nowrap;
 }
-.btn-pay-recurring:hover { opacity: 0.85; }
+.btn-add-from-recurring:hover { background: var(--indigo); color: #fff; }
+
+/* Due banner in add modal */
+.recurring-due-banner {
+  background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3);
+  border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 14px;
+}
+.recurring-due-title { font-size: 12px; font-weight: 600; color: #d97706; margin-bottom: 8px; }
+.recurring-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.recurring-chip {
+  padding: 5px 10px; border: 1px solid rgba(245,158,11,0.4);
+  border-radius: 20px; background: white; color: var(--text-1);
+  font-size: 12px; cursor: pointer; transition: all 0.2s; font-family: inherit;
+  display: flex; align-items: center; gap: 4px;
+}
+.recurring-chip:hover, .recurring-chip.selected { background: var(--indigo); color: #fff; border-color: var(--indigo); }
+.chip-status { font-size: 10px; opacity: 0.85; }
+.recurring-chip.selected .chip-status { color: rgba(255,255,255,0.8); }
+
+/* Pro feature cards */
+.pro-feature-card { border-left: 3px solid var(--indigo); }
+
+/* Savings Goal */
+.savings-goal-info { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-2); margin-bottom: 8px; flex-wrap: wrap; gap: 4px; }
+.savings-goal-track { height: 12px; background: var(--bg); border-radius: 6px; overflow: hidden; margin-bottom: 6px; }
+.savings-goal-fill { height: 100%; border-radius: 6px; transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1); min-width: 2px; }
+.savings-goal-pct { text-align: right; font-size: 13px; font-weight: 600; }
+
+/* PDF Report */
+.pdf-report { display: none; padding: 24px; font-family: 'Noto Sans Thai', sans-serif; color: #1e293b; max-width: 800px; margin: 0 auto; }
+.pdf-header { text-align: center; margin-bottom: 24px; border-bottom: 2px solid #334155; padding-bottom: 16px; }
+.pdf-header h1 { font-size: 22px; font-weight: 700; margin: 0 0 4px 0; }
+.pdf-header p { color: #64748b; font-size: 13px; margin: 0; }
+.pdf-summary { display: flex; gap: 12px; margin-bottom: 24px; }
+.pdf-card { flex: 1; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; text-align: center; }
+.pdf-card-label { font-size: 11px; color: #64748b; margin-bottom: 4px; }
+.pdf-card-val { font-size: 16px; font-weight: 700; }
+.pdf-card-val.income  { color: #16a34a; }
+.pdf-card-val.expense { color: #ef4444; }
+.pdf-section { margin-bottom: 24px; }
+.pdf-section h2 { font-size: 15px; font-weight: 600; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px; }
+.pdf-cat-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+.pdf-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.pdf-table th { background: #f8fafc; padding: 8px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
+.pdf-table td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; }
+.pdf-table .income  { color: #16a34a; font-weight: 600; }
+.pdf-table .expense { color: #ef4444; font-weight: 600; }
+
+@media print {
+  body > *:not(#pdf-report) { display: none !important; }
+  #pdf-report { display: block !important; }
+  @page { margin: 15mm; }
+}
+
+/* Mobile: limit recent list height */
+@media (max-width: 900px) {
+  #recent-list { overflow: hidden; }
+}
 
 /* ========================
    Sync Badge

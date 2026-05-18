@@ -14,8 +14,8 @@
     <link rel="icon" type="image/png" href="/assets/logo-D-a2ymq_.png" />
     <link rel="apple-touch-icon" href="/assets/logo-D-a2ymq_.png" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script type="module" crossorigin src="/assets/index-DKd0OjWh.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DK-j3J05.css">
+    <script type="module" crossorigin src="/assets/index-ox2nW6N6.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-wt0L_pP8.css">
   </head>
   <body>
 
@@ -167,6 +167,15 @@
               <span id="ratio-income-label">รายรับ 0%</span>
               <span id="ratio-expense-label">รายจ่าย 0%</span>
             </div>
+          </div>
+
+          <!-- Savings Goal (Pro only) -->
+          <div class="section-card pro-feature-card" id="savings-goal-card" style="display:none">
+            <div class="section-header">
+              <h2 class="section-title">🎯 เป้าหมายการออม</h2>
+              <button class="link-btn" id="btn-edit-savings-goal">ตั้งค่า ✏️</button>
+            </div>
+            <div id="savings-goal-content"></div>
           </div>
 
           <div class="section-card">
@@ -359,6 +368,19 @@
               <div class="empty-state"><div class="empty-icon">💡</div><p>ยังไม่มีข้อมูล</p></div>
             </div>
           </div>
+          <!-- Monthly Comparison (Pro) -->
+          <div class="section-card pro-feature-card" id="monthly-compare-card" style="display:none">
+            <div class="section-header">
+              <h2 class="section-title">📅 เปรียบเทียบรายเดือน</h2>
+              <select class="filter-select" id="monthly-range-select">
+                <option value="6">6 เดือน</option>
+                <option value="12" selected>12 เดือน</option>
+              </select>
+            </div>
+            <div class="chart-container">
+              <canvas id="monthlyCompareChart"></canvas>
+            </div>
+          </div>
         </section>
 
         <!-- Analytics View -->
@@ -509,6 +531,10 @@
           <!-- Export CSV -->
           <button class="btn-settings-action" id="btn-export-csv" style="margin-top:4px;">
             <span>📥 Export CSV</span>
+          </button>
+          <!-- Export PDF (Pro only) -->
+          <button class="btn-settings-action" id="btn-export-pdf" style="display:none;margin-top:4px;">
+            <span>📄 Export PDF <span class="plan-badge pro" style="font-size:10px;padding:1px 6px;">Pro</span></span>
           </button>
 
           <!-- Divider -->
@@ -707,6 +733,51 @@
           <button type="submit" class="btn-submit">บันทึก</button>
           <button type="button" class="btn-cancel" id="btn-cancel-recurring" style="margin-top:6px;width:100%;">ยกเลิก</button>
         </form>
+      </div>
+    </div>
+
+    <!-- ======================== -->
+    <!-- Savings Goal Modal       -->
+    <!-- ======================== -->
+    <div class="modal-overlay" id="savings-goal-modal-overlay" role="dialog" aria-modal="true">
+      <div class="modal modal-sm">
+        <div class="modal-header">
+          <h2 class="modal-title">🎯 ตั้งเป้าหมายการออม</h2>
+          <button class="modal-close" id="savings-goal-modal-close">✕</button>
+        </div>
+        <div class="form-group">
+          <label>ชื่อเป้าหมาย</label>
+          <input type="text" id="savings-goal-name" class="form-input" placeholder="เช่น เที่ยวญี่ปุ่น, ซื้อรถ" />
+        </div>
+        <div class="form-group">
+          <label>จำนวนเงินเป้าหมาย (฿)</label>
+          <input type="number" id="savings-goal-amount" class="form-input" placeholder="50000" min="1" step="1" />
+        </div>
+        <div class="form-group">
+          <label>กำหนดเวลา (เดือน/ปี)</label>
+          <input type="month" id="savings-goal-deadline" class="form-input" />
+        </div>
+        <button class="btn-submit" id="btn-save-savings-goal">บันทึกเป้าหมาย</button>
+        <button class="btn-cancel" id="btn-clear-savings-goal" style="margin-top:8px;width:100%">ลบเป้าหมาย</button>
+      </div>
+    </div>
+
+    <!-- ======================== -->
+    <!-- PDF Report (hidden)      -->
+    <!-- ======================== -->
+    <div id="pdf-report" class="pdf-report" style="display:none">
+      <div class="pdf-header">
+        <h1>MoneyFlow — รายงานการเงิน</h1>
+        <p id="pdf-date-range"></p>
+      </div>
+      <div class="pdf-summary" id="pdf-summary"></div>
+      <div class="pdf-section">
+        <h2>รายจ่ายแยกตามหมวดหมู่</h2>
+        <div id="pdf-categories"></div>
+      </div>
+      <div class="pdf-section">
+        <h2>รายการทั้งหมดในรอบบิล</h2>
+        <table class="pdf-table" id="pdf-transactions"></table>
       </div>
     </div>
 

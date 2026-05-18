@@ -83,6 +83,11 @@ let recurringItems = [];
 let recurringShownToday = new Set(); // toast shown this session
 let unsubscribeRecurring = null;
 let editingRecurringId = null;
+let pendingRecurringId = null; // recurring source when adding from quick-fill
+
+// Savings Goal & Monthly Chart
+let savingsGoal = null;
+let monthlyChartInstance = null;
 
 // Auth & plan state
 let currentUser      = null;
@@ -243,6 +248,8 @@ async function loadUserMeta() {
         { enabled: true, notifyNear: true, notifyOver: true, nearThreshold: 80, notifyMode: 'always' },
         data.budgetSettings || {}
       );
+      // Load savings goal
+      savingsGoal = data.savingsGoal || null;
     } else if (DEV_EMAILS.includes(currentUser?.email)) {
       userPlan = devPlanOverride;
     }
@@ -293,6 +300,9 @@ function updatePlanUI() {
       scanInfo.className = `scan-info-row${cls ? ' ' + cls : ''}`;
     }
   }
+  // Pro-only UI elements
+  const pdfBtn = document.getElementById('btn-export-pdf');
+  if (pdfBtn) pdfBtn.style.display = userPlan === 'pro' ? '' : 'none';
 }
 
 // ========================
@@ -511,8 +521,10 @@ function renderDashboard() {
   else if (balance < 0) balanceTrend.textContent = t('dash.balance.negative');
   else balanceTrend.textContent = t('dash.balance.zero');
 
-  const recent = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+  const isMobile = window.innerWidth <= 900;
+  const recent = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, isMobile ? 3 : 5);
   renderTransactionList('recent-list', recent, 'empty-recent');
+  renderSavingsGoal();
 }
 
 // ========================
@@ -969,7 +981,130 @@ function renderAll() {
   if      (currentView === 'dashboard')    renderDashboard();
   else if (currentView === 'transactions') renderAllTransactions();
   else if (currentView === 'analytics')    { renderAnalytics(); renderRecurringList(); }
-  else if (currentView === 'trends')       { renderDailyChart(); renderSpendingInsights(); }
+  else if (currentView === 'trends')       { renderDailyChart(); renderSpendingInsights(); renderMonthlyChart(); }
+}
+
+// ========================
+// Savings Goal
+// ========================
+function renderSavingsGoal() {
+  const card = document.getElementById('savings-goal-card');
+  if (!card) return;
+  if (userPlan !== 'pro') { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const content = document.getElementById('savings-goal-content');
+  if (!savingsGoal || !savingsGoal.targetAmount) {
+    content.innerHTML = `<p class="form-help" style="text-align:center;padding:12px">ยังไม่ได้ตั้งเป้าหมาย กด "ตั้งค่า ✏️" เพื่อเริ่ม</p>`;
+    return;
+  }
+  const totalIncome  = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+  const totalExpense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+  const currentSavings = Math.max(0, totalIncome - totalExpense);
+  const pct = Math.min(100, (currentSavings / savingsGoal.targetAmount) * 100);
+  const color = pct >= 100 ? '#16a34a' : pct >= 60 ? '#d97706' : 'var(--indigo)';
+  const deadlineText = savingsGoal.deadline ? ` · ภายใน ${savingsGoal.deadline}` : '';
+  content.innerHTML = `
+    <div class="savings-goal-info">
+      <span>${escapeHtml(savingsGoal.name || 'เป้าหมายการออม')}</span>
+      <span>${formatCurrency(currentSavings)} / ${formatCurrency(savingsGoal.targetAmount)}${deadlineText}</span>
+    </div>
+    <div class="savings-goal-track">
+      <div class="savings-goal-fill" style="width:${pct.toFixed(1)}%;background:${color}"></div>
+    </div>
+    <div class="savings-goal-pct" style="color:${color}">${pct >= 100 ? '🎉 บรรลุเป้าหมายแล้ว!' : pct.toFixed(1) + '%'}</div>`;
+}
+
+// ========================
+// Monthly Comparison Chart (Pro)
+// ========================
+function renderMonthlyChart() {
+  const card = document.getElementById('monthly-compare-card');
+  if (!card) return;
+  if (userPlan !== 'pro') { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const months = parseInt(document.getElementById('monthly-range-select')?.value || '6');
+  const labels = [], incomeData = [], expenseData = [];
+  const now = new Date();
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    labels.push(d.toLocaleDateString(dateLocale(), { month: 'short', year: '2-digit' }));
+    const monthTx = transactions.filter(tx => tx.date && tx.date.startsWith(monthStr));
+    incomeData.push(monthTx.filter(tx => tx.type === 'income').reduce((s, tx) => s + Number(tx.amount), 0));
+    expenseData.push(monthTx.filter(tx => tx.type === 'expense').reduce((s, tx) => s + Number(tx.amount), 0));
+  }
+  const ctx = document.getElementById('monthlyCompareChart');
+  if (!ctx) return;
+  if (monthlyChartInstance) { monthlyChartInstance.destroy(); monthlyChartInstance = null; }
+  monthlyChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'รายรับ',  data: incomeData,  backgroundColor: '#16A34A', borderRadius: 4 },
+        { label: 'รายจ่าย', data: expenseData, backgroundColor: '#EF4444', borderRadius: 4 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#64748B', font: { family: 'Noto Sans Thai', size: 12 } } },
+        tooltip: { mode: 'index', intersect: false },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#64748B', font: { size: 11 } } },
+        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#64748B', font: { size: 11 }, callback: val => '฿' + val.toLocaleString() } },
+      },
+    },
+  });
+}
+
+// ========================
+// Export PDF (Pro)
+// ========================
+function exportPDF() {
+  if (userPlan !== 'pro') { openUpgradeModal('Export PDF'); return; }
+  const today = new Date();
+  const cycle = getCycleRange();
+  const loc   = dateLocale();
+  const cycleTx = transactions.filter(t => isInCurrentCycle(t.date));
+  const income  = cycleTx.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+  const expense = cycleTx.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+
+  document.getElementById('pdf-date-range').textContent =
+    `${cycle.start.toLocaleDateString(loc, { day: 'numeric', month: 'long', year: 'numeric' })} — ${today.toLocaleDateString(loc, { day: 'numeric', month: 'long', year: 'numeric' })}`;
+
+  document.getElementById('pdf-summary').innerHTML = `
+    <div class="pdf-card"><div class="pdf-card-label">รายรับ</div><div class="pdf-card-val income">+${formatCurrency(income)}</div></div>
+    <div class="pdf-card"><div class="pdf-card-label">รายจ่าย</div><div class="pdf-card-val expense">-${formatCurrency(expense)}</div></div>
+    <div class="pdf-card"><div class="pdf-card-label">คงเหลือ</div><div class="pdf-card-val">${formatCurrency(income - expense)}</div></div>`;
+
+  const catTotals = {};
+  cycleTx.filter(t => t.type === 'expense').forEach(t => { catTotals[t.category] = (catTotals[t.category] || 0) + Number(t.amount); });
+  document.getElementById('pdf-categories').innerHTML = Object.entries(catTotals).sort((a, b) => b[1] - a[1])
+    .map(([catId, amt]) => {
+      const cat = getCategoryInfo('expense', catId);
+      return `<div class="pdf-cat-row"><span>${cat.emoji} ${cat.label}</span><span>${formatCurrency(amt)}</span></div>`;
+    }).join('') || '<p>ไม่มีรายจ่าย</p>';
+
+  const sorted = [...cycleTx].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const rows = sorted.map(tx => {
+    const cat = getCategoryInfo(tx.type, tx.category);
+    const d = new Date(tx.date);
+    return `<tr>
+      <td>${isNaN(d) ? tx.date : d.toLocaleDateString(loc, { day: 'numeric', month: 'short' })}</td>
+      <td>${cat.emoji} ${cat.label}</td>
+      <td>${escapeHtml(tx.description)}</td>
+      <td class="${tx.type}">${tx.type === 'income' ? '+' : '-'}${formatCurrency(tx.amount)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('pdf-transactions').innerHTML =
+    `<thead><tr><th>วันที่</th><th>หมวดหมู่</th><th>รายละเอียด</th><th>จำนวนเงิน</th></tr></thead><tbody>${rows}</tbody>`;
+
+  const report = document.getElementById('pdf-report');
+  report.style.display = 'block';
+  closeModal('settings-modal-overlay');
+  setTimeout(() => { window.print(); setTimeout(() => { report.style.display = 'none'; }, 500); }, 300);
 }
 
 // ========================
@@ -1206,44 +1341,62 @@ async function deleteRecurring(id) {
   }
 }
 
+function getRecurringStatus(item) {
+  const today = new Date();
+  const todayDay  = today.getDate();
+  const thisMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const isDone    = item.installments && (item.paidCount || 0) >= item.installments;
+  const paidThisMonth = item.lastPaidDate && item.lastPaidDate.startsWith(thisMonth);
+  if (isDone)        return { key: 'done',    label: '✅ ครบทุกงวดแล้ว',    canPay: false };
+  if (paidThisMonth) return { key: 'paid',    label: '✅ จ่ายแล้วเดือนนี้',   canPay: false };
+  const daysUntil = item.dayOfMonth - todayDay;
+  if (daysUntil < 0) return { key: 'overdue', label: '🔴 เลยกำหนดแล้ว',      canPay: true  };
+  if (daysUntil === 0) return { key: 'overdue', label: '🔴 ถึงกำหนดวันนี้!',  canPay: true  };
+  if (daysUntil <= 3) return { key: 'soon',   label: `🟡 อีก ${daysUntil} วัน`, canPay: true };
+  return { key: 'pending', label: `⏳ อีก ${daysUntil} วัน`, canPay: true };
+}
+
 function renderRecurringList() {
   const container = document.getElementById('recurring-list');
   if (!container) return;
   if (recurringItems.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🔄</div><p>ยังไม่มีรายการประจำ</p></div>`;
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🔄</div><p>ยังไม่มีรายการประจำ<br><small style="color:var(--text-3)">กด "+ เพิ่มรายการประจำ" เพื่อเริ่ม</small></p></div>`;
     return;
   }
   container.innerHTML = '';
-  recurringItems.forEach(item => {
-    const cat = getCategoryInfo('expense', item.category);
-    const isDone = item.installments && (item.paidCount || 0) >= item.installments;
-    const today  = new Date();
-    const thisMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    const paidThisMonth = item.lastPaidDate && item.lastPaidDate.startsWith(thisMonth);
+  // Sort: overdue/soon first
+  const sortOrder = { overdue: 0, soon: 1, pending: 2, paid: 3, done: 4 };
+  const sorted = [...recurringItems].sort((a, b) => {
+    const sa = getRecurringStatus(a).key, sb = getRecurringStatus(b).key;
+    return (sortOrder[sa] ?? 5) - (sortOrder[sb] ?? 5);
+  });
+  sorted.forEach(item => {
+    const cat    = getCategoryInfo('expense', item.category);
+    const status = getRecurringStatus(item);
     const remaining = item.installments ? item.installments - (item.paidCount || 0) : null;
-    const remText = remaining !== null ? `${remaining} งวดคงเหลือ` : '∞';
-
+    const remText   = remaining !== null ? `${remaining} งวดคงเหลือ` : '∞';
     const div = document.createElement('div');
-    div.className = 'recurring-item';
+    div.className = `recurring-item${status.key === 'overdue' ? ' rec-overdue' : status.key === 'soon' ? ' rec-soon' : ''}`;
     div.innerHTML = `
       <div class="tx-emoji">${cat.emoji}</div>
       <div class="recurring-item-info">
-        <div class="recurring-item-title">${escapeHtml(item.description)} ${formatCurrency(item.amount)}</div>
+        <div class="recurring-item-title">${escapeHtml(item.description)} <strong>${formatCurrency(item.amount)}</strong></div>
         <div class="recurring-item-meta">ทุกวันที่ ${item.dayOfMonth} · ${remText}${item.note ? ' · ' + escapeHtml(item.note) : ''}</div>
+        <span class="rec-status ${status.key}">${status.label}</span>
       </div>
       <div class="recurring-item-actions">
-        ${isDone ? `<span class="recurring-done-tag">ครบแล้ว</span>` :
-          paidThisMonth ? `<span class="recurring-done-tag">จ่ายแล้วเดือนนี้</span>` :
-          `<button class="btn-pay-recurring" data-id="${item.id}">✅ จ่ายแล้ว</button>`}
+        ${status.canPay ? `<button class="btn-add-from-recurring" data-id="${item.id}" title="เพิ่มเป็นรายจ่าย">💸 เพิ่มรายจ่าย</button>` : ''}
         <button class="tx-btn tx-btn-edit" data-id="${item.id}" title="แก้ไข">✏️</button>
         <button class="tx-btn tx-btn-delete" data-id="${item.id}" title="ลบ">🗑️</button>
       </div>`;
     container.appendChild(div);
 
-    div.querySelectorAll('.btn-pay-recurring').forEach(btn =>
+    div.querySelectorAll('.btn-add-from-recurring').forEach(btn =>
       btn.addEventListener('click', () => {
         const rec = recurringItems.find(r => r.id === btn.dataset.id);
-        if (rec) markRecurringPaid(rec);
+        if (!rec) return;
+        openAddModal();
+        setTimeout(() => prefillFromRecurring(rec), 60);
       }));
     div.querySelectorAll('.tx-btn-edit').forEach(btn =>
       btn.addEventListener('click', () => {
@@ -1253,6 +1406,20 @@ function renderRecurringList() {
     div.querySelectorAll('.tx-btn-delete').forEach(btn =>
       btn.addEventListener('click', () => deleteRecurring(btn.dataset.id)));
   });
+}
+
+function prefillFromRecurring(item) {
+  pendingRecurringId = item.id;
+  setTransactionType('expense');
+  setTimeout(() => {
+    document.getElementById('input-amount').value      = item.amount;
+    document.getElementById('input-description').value = item.description;
+    setTimeout(() => { document.getElementById('input-category').value = item.category; }, 30);
+  }, 30);
+  // Mark selected chip in banner
+  document.querySelectorAll('.recurring-chip').forEach(c => c.classList.remove('selected'));
+  const chip = document.querySelector(`.recurring-chip[data-id="${item.id}"]`);
+  if (chip) chip.classList.add('selected');
 }
 
 function checkRecurringDue() {
@@ -1279,6 +1446,7 @@ function checkRecurringDue() {
 // ========================
 function openAddModal() {
   editingId = null;
+  pendingRecurringId = null;
   document.getElementById('modal-title').textContent  = t('modal.addTitle');
   document.getElementById('submit-label').textContent = t('modal.addBtn');
   document.getElementById('transaction-form').reset();
@@ -1287,7 +1455,42 @@ function openAddModal() {
   document.getElementById('input-date').value = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   clearPendingImage();
   setTransactionType('income');
+  // Show due recurring items banner
+  renderRecurringDueBanner();
   openModal('modal-overlay');
+}
+
+function renderRecurringDueBanner() {
+  // Remove old banner
+  const old = document.getElementById('recurring-due-banner');
+  if (old) old.remove();
+  if (!recurringItems.length) return;
+  // Items due today or overdue (not paid this month, not done)
+  const today = new Date();
+  const dueItems = recurringItems.filter(item => {
+    const s = getRecurringStatus(item);
+    return s.canPay && (s.key === 'overdue' || s.key === 'soon');
+  });
+  if (!dueItems.length) return;
+  const banner = document.createElement('div');
+  banner.id = 'recurring-due-banner';
+  banner.className = 'recurring-due-banner';
+  banner.innerHTML = `<div class="recurring-due-title">🔔 รายการประจำที่ถึงกำหนด</div><div class="recurring-chips">${
+    dueItems.map(item => {
+      const cat = getCategoryInfo('expense', item.category);
+      const s   = getRecurringStatus(item);
+      return `<button class="recurring-chip" data-id="${item.id}">${cat.emoji} ${escapeHtml(item.description)} ${formatCurrency(item.amount)} <span class="chip-status ${s.key}">${s.label}</span></button>`;
+    }).join('')
+  }</div>`;
+  // Insert before scan-section in modal
+  const scanSection = document.querySelector('#modal-overlay .scan-section');
+  if (scanSection) scanSection.before(banner);
+  banner.querySelectorAll('.recurring-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const rec = recurringItems.find(r => r.id === chip.dataset.id);
+      if (rec) prefillFromRecurring(rec);
+    });
+  });
 }
 
 function openEditModal(id) {
@@ -1366,6 +1569,18 @@ async function handleFormSubmit(e) {
       if (txData.type === 'expense') setTimeout(() => checkBudgetAlert(txData.category), 500);
     } else {
       await fsAdd(txData);
+      // If added from recurring quick-fill → mark recurring as paid
+      if (pendingRecurringId) {
+        const rec = recurringItems.find(r => r.id === pendingRecurringId);
+        if (rec) {
+          const todayStr = new Date().toLocaleDateString('sv');
+          updateDoc(doc(recurringCol(), rec.id), {
+            paidCount: (rec.paidCount || 0) + 1,
+            lastPaidDate: todayStr,
+          }).catch(() => {});
+        }
+        pendingRecurringId = null;
+      }
       showToast(t('toast.saved'));
       if (txData.type === 'expense') setTimeout(() => checkBudgetAlert(txData.category), 500);
       if (isContinue) {
@@ -1808,8 +2023,49 @@ function init() {
   document.getElementById('recurring-form')?.addEventListener('submit', handleRecurringFormSubmit);
   document.getElementById('btn-cancel-recurring')?.addEventListener('click', () => closeModal('recurring-modal-overlay'));
 
-  // Export CSV
+  // Export CSV + PDF
   document.getElementById('btn-export-csv')?.addEventListener('click', exportCSV);
+  document.getElementById('btn-export-pdf')?.addEventListener('click', exportPDF);
+
+  // Monthly comparison chart range
+  document.getElementById('monthly-range-select')?.addEventListener('change', renderMonthlyChart);
+
+  // Savings Goal modal
+  document.getElementById('btn-edit-savings-goal')?.addEventListener('click', () => {
+    if (savingsGoal) {
+      document.getElementById('savings-goal-name').value     = savingsGoal.name || '';
+      document.getElementById('savings-goal-amount').value   = savingsGoal.targetAmount || '';
+      document.getElementById('savings-goal-deadline').value = savingsGoal.deadline || '';
+    } else {
+      document.getElementById('savings-goal-name').value     = '';
+      document.getElementById('savings-goal-amount').value   = '';
+      document.getElementById('savings-goal-deadline').value = '';
+    }
+    openModal('savings-goal-modal-overlay');
+  });
+  document.getElementById('savings-goal-modal-close')?.addEventListener('click', () => closeModal('savings-goal-modal-overlay'));
+  document.getElementById('savings-goal-modal-overlay')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModal('savings-goal-modal-overlay');
+  });
+  document.getElementById('btn-save-savings-goal')?.addEventListener('click', async () => {
+    const name     = document.getElementById('savings-goal-name').value.trim();
+    const amount   = parseFloat(document.getElementById('savings-goal-amount').value);
+    const deadline = document.getElementById('savings-goal-deadline').value;
+    if (!amount || amount <= 0) { showToast('กรุณาใส่จำนวนเงินเป้าหมาย', 'error'); return; }
+    savingsGoal = { name, targetAmount: amount, deadline };
+    await fsSaveMeta({ savingsGoal });
+    closeModal('savings-goal-modal-overlay');
+    renderSavingsGoal();
+    showToast('🎯 บันทึกเป้าหมายสำเร็จ');
+  });
+  document.getElementById('btn-clear-savings-goal')?.addEventListener('click', async () => {
+    if (!confirm('ลบเป้าหมายการออม?')) return;
+    savingsGoal = null;
+    await fsSaveMeta({ savingsGoal: null });
+    closeModal('savings-goal-modal-overlay');
+    renderSavingsGoal();
+    showToast('ลบเป้าหมายแล้ว', 'warning');
+  });
 
   // Budget notification toggles — auto-save on change
   const toggleBudgetNotify = document.getElementById('toggle-budget-notify');

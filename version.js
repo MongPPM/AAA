@@ -1,6 +1,20 @@
-export const APP_VERSION = '1.2.0';
+export const APP_VERSION = '1.3.0';
 
 export const CHANGELOG = [
+  {
+    version: '1.3.0',
+    date: '2026-05-18',
+    label: 'Pro Features · Recurring UX Fix',
+    changes: [
+      { type: 'fix',     text: 'รายการประจำ — ปรับ UX ใหม่ทั้งหมด: แสดงสถานะชัดเจน (ถึงกำหนด/ใกล้/จ่ายแล้ว) ไม่สับสนกับปุ่ม' },
+      { type: 'fix',     text: 'รายการประจำ — กดปุ่ม "💸 เพิ่มรายจ่าย" จะเปิดฟอร์มพร้อมกรอกข้อมูลให้อัตโนมัติ' },
+      { type: 'new',     text: 'Quick-fill รายการประจำในฟอร์มเพิ่มรายการ — เมื่อถึงกำหนด จะแสดง chip ให้เลือกทันที' },
+      { type: 'fix',     text: 'รายการล่าสุดบนมือถือ — แสดงแค่ 3 รายการ ไม่ต้องเลื่อนเพื่อดูหน้า Dashboard' },
+      { type: 'new',     text: '[Pro] เปรียบเทียบรายเดือน — กราฟเทียบรายรับ-รายจ่ายย้อนหลัง 6/12 เดือน' },
+      { type: 'new',     text: '[Pro] Savings Goal — ตั้งเป้าหมายการออม พร้อม progress bar' },
+      { type: 'new',     text: '[Pro] Export PDF — พิมพ์รายงานการเงินรอบบิลปัจจุบัน' },
+    ],
+  },
   {
     version: '1.2.0',
     date: '2026-05-18',
