@@ -1,5 +1,6 @@
 import { auth, db, googleProvider } from './firebase.js';
 import { APP_VERSION, CHANGELOG } from './version.js';
+import { t, setLanguage, getLanguage, applyI18n, dateLocale } from './i18n.js';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
@@ -11,24 +12,26 @@ import {
 // ========================
 const CATEGORIES = {
   income: [
-    { id: 'salary',     label: 'เงินเดือน',         emoji: '💼' },
-    { id: 'freelance',  label: 'ฟรีแลนซ์',          emoji: '💻' },
-    { id: 'investment', label: 'การลงทุน',           emoji: '📈' },
-    { id: 'gift',       label: 'ของขวัญ/โบนัส',     emoji: '🎁' },
-    { id: 'other_in',   label: 'รายรับอื่นๆ',       emoji: '💰' },
+    { id: 'salary',     emoji: '💼' },
+    { id: 'freelance',  emoji: '💻' },
+    { id: 'investment', emoji: '📈' },
+    { id: 'gift',       emoji: '🎁' },
+    { id: 'other_in',   emoji: '💰' },
   ],
   expense: [
-    { id: 'food',          label: 'อาหาร',              emoji: '🍜' },
-    { id: 'transport',     label: 'เดินทาง',            emoji: '🚗' },
-    { id: 'shopping',      label: 'ช้อปปิ้ง',           emoji: '🛍️' },
-    { id: 'utilities',     label: 'ค่าสาธารณูปโภค',    emoji: '💡' },
-    { id: 'health',        label: 'สุขภาพ',             emoji: '🏥' },
-    { id: 'entertainment', label: 'บันเทิง',            emoji: '🎮' },
-    { id: 'education',     label: 'การศึกษา',           emoji: '📚' },
-    { id: 'rent',          label: 'ค่าเช่า/บ้าน',      emoji: '🏠' },
-    { id: 'other_ex',      label: 'รายจ่ายอื่นๆ',      emoji: '📦' },
+    { id: 'food',          emoji: '🍜' },
+    { id: 'transport',     emoji: '🚗' },
+    { id: 'shopping',      emoji: '🛍️' },
+    { id: 'utilities',     emoji: '💡' },
+    { id: 'health',        emoji: '🏥' },
+    { id: 'entertainment', emoji: '🎮' },
+    { id: 'education',     emoji: '📚' },
+    { id: 'rent',          emoji: '🏠' },
+    { id: 'other_ex',      emoji: '📦' },
   ],
 };
+// Category label helper (locale-aware)
+function catLabel(id) { return t(`cat.${id}`) || id; }
 
 const CAT_COLORS = {
   income:  ['#22c55e','#16a34a','#86efac','#4ade80','#bbf7d0'],
@@ -38,6 +41,11 @@ const CAT_COLORS = {
 const CAT_MAP = new Map(
   [...CATEGORIES.income, ...CATEGORIES.expense].map(c => [c.id, c])
 );
+function getCatEntry(id) {
+  const c = CAT_MAP.get(id);
+  if (!c) return { label: id, emoji: '📌' };
+  return { ...c, label: catLabel(id) };
+}
 
 // Omise publishable key (public — safe to expose in frontend)
 // ⚠️ TODO: Replace with your actual key from https://dashboard.omise.co → Keys
@@ -120,11 +128,11 @@ function showApp() {
 
 async function handleSignIn() {
   try {
-    showLoading('กำลังเข้าสู่ระบบ...');
+    showLoading(t('loading.signingIn'));
     await signInWithPopup(auth, googleProvider);
   } catch (err) {
     hideLoading();
-    showToast('เข้าสู่ระบบไม่สำเร็จ: ' + err.message, 'error');
+    showToast(t('toast.signInError') + err.message, 'error');
   }
 }
 
@@ -223,15 +231,15 @@ function updatePlanUI() {
   const scanInfo = document.getElementById('scan-info');
   if (scanInfo) {
     if (userPlan === 'pro') {
-      scanInfo.textContent = 'Pro — สแกนสลิปได้ไม่จำกัด ⭐';
+      scanInfo.textContent = t('scan.pro');
       scanInfo.className = 'scan-info-row pro';
     } else {
       const today = new Date().toLocaleDateString('sv'); // YYYY-MM-DD local
       const used  = scanDate === today ? scanCount : 0;
       const left  = FREE_SCAN_LIMIT - used;
       scanInfo.textContent = left > 0
-        ? `Free — เหลือ ${left}/${FREE_SCAN_LIMIT} ครั้งวันนี้`
-        : `หมดแล้ววันนี้ — อัปเกรด Pro เพื่อสแกนต่อ`;
+        ? t('scan.free.left', { left, total: FREE_SCAN_LIMIT })
+        : t('scan.free.exhausted');
       const cls = left <= 0 ? 'exhausted' : left === 1 ? 'danger' : left <= 3 ? 'warning' : '';
       scanInfo.className = `scan-info-row${cls ? ' ' + cls : ''}`;
     }
@@ -270,7 +278,7 @@ async function checkAndIncrementScan() {
   const count   = sameDay ? (meta.scan_count || 0) : 0;
 
   if (count >= FREE_SCAN_LIMIT) {
-    openUpgradeModal(`ใช้ครบ ${FREE_SCAN_LIMIT} ครั้งสแกนฟรีวันนี้แล้ว\nอัปเกรดเป็น Pro เพื่อสแกนไม่จำกัด`);
+    openUpgradeModal(t('scan.limit.upgrade', { total: FREE_SCAN_LIMIT }));
     return false;
   }
 
@@ -285,7 +293,8 @@ async function checkAndIncrementScan() {
 // ========================
 // Loading Overlay
 // ========================
-function showLoading(msg = 'กำลังโหลด...') {
+function showLoading(msg) {
+  if (msg === undefined) msg = t('loading.default');
   document.getElementById('loading-text').textContent = msg;
   document.getElementById('loading-overlay').classList.add('active');
 }
@@ -300,8 +309,7 @@ function setSyncStatus(status) {
   const badge = document.getElementById('sync-badge');
   const label = document.getElementById('sync-label');
   badge.className = 'sync-badge ' + status;
-  const labels = { online: 'ออนไลน์', offline: 'ออฟไลน์', syncing: 'กำลังซิงค์...' };
-  label.textContent = labels[status] || status;
+  label.textContent = t(`sync.${status}`) || status;
 }
 
 // ========================
@@ -320,11 +328,12 @@ function formatCurrency(amount) {
 function formatDate(dateStr) {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
-    + ' · ' + d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  const loc = dateLocale();
+  return d.toLocaleDateString(loc, { year: 'numeric', month: 'short', day: 'numeric' })
+    + ' · ' + d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
 }
 function getCategoryInfo(type, catId) {
-  return CAT_MAP.get(catId) || { label: catId, emoji: '📌' };
+  return getCatEntry(catId);
 }
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -404,8 +413,7 @@ function setView(view) {
   const navEl = document.getElementById(`nav-${view}`);
   if (navEl) navEl.classList.add('active');
   document.querySelectorAll(`.bottom-nav-item[data-view="${view}"]`).forEach(el => el.classList.add('active'));
-  const titles = { dashboard: 'ภาพรวม', transactions: 'รายการทั้งหมด', analytics: 'วิเคราะห์ตามหมวดหมู่', trends: 'แนวโน้มรายวัน' };
-  document.getElementById('page-title').textContent = titles[view] || '';
+  document.getElementById('page-title').textContent = t(`page.${view}`) || view;
   renderAll();
   if (window.innerWidth <= 900) document.getElementById('sidebar').classList.remove('open');
 }
@@ -419,17 +427,17 @@ function populateCategorySelect(type) {
   CATEGORIES[type].forEach(cat => {
     const opt = document.createElement('option');
     opt.value = cat.id;
-    opt.textContent = `${cat.emoji} ${cat.label}`;
+    opt.textContent = `${cat.emoji} ${catLabel(cat.id)}`;
     select.appendChild(opt);
   });
 }
 function populateFilterCategory() {
   const select = document.getElementById('filter-category');
-  select.innerHTML = '<option value="all">ทุกหมวดหมู่</option>';
+  select.innerHTML = `<option value="all">${t('tx.filterAllCats')}</option>`;
   [...CATEGORIES.income, ...CATEGORIES.expense].forEach(cat => {
     const opt = document.createElement('option');
     opt.value = cat.id;
-    opt.textContent = `${cat.emoji} ${cat.label}`;
+    opt.textContent = `${cat.emoji} ${catLabel(cat.id)}`;
     select.appendChild(opt);
   });
 }
@@ -446,13 +454,13 @@ function renderDashboard() {
   const total = income + expense;
   const expenseRatio = total > 0 ? (expense / total) * 100 : 0;
   document.getElementById('ratio-fill').style.width = expenseRatio + '%';
-  document.getElementById('ratio-income-label').textContent  = `รายรับ ${(100 - expenseRatio).toFixed(0)}%`;
-  document.getElementById('ratio-expense-label').textContent = `รายจ่าย ${expenseRatio.toFixed(0)}%`;
+  document.getElementById('ratio-income-label').textContent  = `${t('dash.ratio.income')} ${(100 - expenseRatio).toFixed(0)}%`;
+  document.getElementById('ratio-expense-label').textContent = `${t('dash.ratio.expense')} ${expenseRatio.toFixed(0)}%`;
 
   const balanceTrend = document.getElementById('balance-trend');
-  if (balance > 0) balanceTrend.textContent = '↑ คุณมีเงินเหลือ';
-  else if (balance < 0) balanceTrend.textContent = '↓ รายจ่ายเกินรายรับ';
-  else balanceTrend.textContent = 'รายรับเท่ากับรายจ่าย';
+  if (balance > 0) balanceTrend.textContent = t('dash.balance.positive');
+  else if (balance < 0) balanceTrend.textContent = t('dash.balance.negative');
+  else balanceTrend.textContent = t('dash.balance.zero');
 
   const recent = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
   renderTransactionList('recent-list', recent, 'empty-recent');
@@ -544,10 +552,10 @@ function updateBalanceScale(incomeList, expenseList) {
 
   if (verdict) {
     const diff = Math.abs(inc - exp);
-    if (total === 0)  { verdict.textContent = 'ยังไม่มีรายการ'; verdict.className = 'scale-verdict'; }
+    if (total === 0)    { verdict.textContent = t('tx.scale.noItems'); verdict.className = 'scale-verdict'; }
     else if (inc > exp) { verdict.textContent = `+${formatCurrency(diff)}`; verdict.className = 'scale-verdict positive'; }
     else if (exp > inc) { verdict.textContent = `-${formatCurrency(diff)}`; verdict.className = 'scale-verdict negative'; }
-    else               { verdict.textContent = 'เท่ากันพอดี'; verdict.className = 'scale-verdict'; }
+    else                { verdict.textContent = t('tx.scale.equal'); verdict.className = 'scale-verdict'; }
   }
 }
 
@@ -588,7 +596,7 @@ function renderTimelineList(listId, items, emptyId) {
   if (items.length === 0) {
     const emptyTemplate = document.getElementById(emptyId);
     if (emptyTemplate) container.appendChild(emptyTemplate.cloneNode(true));
-    else container.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>ไม่มีรายการ</p></div>';
+    else container.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>${t('tx.noItems')}</p></div>`;
     return;
   }
   let lastDay = null;
@@ -599,7 +607,7 @@ function renderTimelineList(listId, items, emptyId) {
       const hdr = document.createElement('div');
       hdr.className = 'timeline-date-header';
       const d = new Date(day + 'T00:00:00');
-      hdr.textContent = isNaN(d) ? day : d.toLocaleDateString('th-TH', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+      hdr.textContent = isNaN(d) ? day : d.toLocaleDateString(dateLocale(), { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
       container.appendChild(hdr);
     }
     const cat = getCategoryInfo(tx.type, tx.category);
@@ -612,10 +620,10 @@ function renderTimelineList(listId, items, emptyId) {
       <div class="tx-info">
         <div class="tx-desc">
           ${escapeHtml(tx.description)}
-          ${hasImage ? `<button class="tx-image-btn" data-id="${tx.id}" title="ดูสลิป">📷</button>` : ''}
+          ${hasImage ? `<button class="tx-image-btn" data-id="${tx.id}" title="${t('slip.viewBtn')}">📷</button>` : ''}
         </div>
         <div class="tx-meta">${cat.label} · ${formatDate(tx.date)}</div>
-        ${showSlip ? `<button class="tx-slip-link" data-id="${tx.id}"><img src="${tx.imageData}" alt="สลิป" class="tx-slip-thumb" loading="lazy">ดูสลิป ↗</button>` : ''}
+        ${showSlip ? `<button class="tx-slip-link" data-id="${tx.id}"><img src="${tx.imageData}" alt="slip" class="tx-slip-thumb" loading="lazy">${t('slip.viewSlip')}</button>` : ''}
       </div>
       <div class="tx-amount ${tx.type}">${tx.type === 'income' ? '+' : '-'}${formatCurrency(tx.amount)}</div>
       <div class="tx-actions">
@@ -648,20 +656,21 @@ function renderDailyChart() {
   const cycle = getCycleRange();
   // Last day of billing period = cycle.end - 1 day (cycle.end is exclusive)
   const cycleLastDay = new Date(cycle.end); cycleLastDay.setDate(cycleLastDay.getDate() - 1);
-  const startLabel = cycle.start.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
-  const endLabel   = cycleLastDay.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+  const loc = dateLocale();
+  const startLabel = cycle.start.toLocaleDateString(loc, { day: 'numeric', month: 'short' });
+  const endLabel   = cycleLastDay.toLocaleDateString(loc, { day: 'numeric', month: 'short' });
 
   if (userPlan === 'pro') {
     start = cycle.start;
     end   = cycle.end > today ? today : cycle.end; // cap at today — no empty bars
     if (noticeEl) noticeEl.style.display = 'none';
-    if (titleEl) titleEl.textContent = `แนวโน้มรายวัน (${startLabel} – ${endLabel})`;
+    if (titleEl) titleEl.textContent = t('trends.titleFull', { start: startLabel, end: endLabel });
   } else {
     end = new Date(today);
     const thirtyAgo = new Date(today); thirtyAgo.setDate(thirtyAgo.getDate() - 29); thirtyAgo.setHours(0, 0, 0, 0);
     start = cycle.start >= thirtyAgo ? cycle.start : thirtyAgo;
     if (noticeEl) noticeEl.style.display = '';
-    if (titleEl) titleEl.textContent = `แนวโน้มรายวัน (${startLabel} – ${endLabel})`;
+    if (titleEl) titleEl.textContent = t('trends.titleFull', { start: startLabel, end: endLabel });
   }
 
   const labels = [], incomeData = [], expenseData = [];
@@ -679,7 +688,7 @@ function renderDailyChart() {
   const cursor = new Date(start);
   while (cursor < end) {
     const dateStr = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
-    labels.push(cursor.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
+    labels.push(cursor.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' }));
     const entry = dateIndex.get(dateStr) || { income: 0, expense: 0 };
     incomeData.push(entry.income);
     expenseData.push(entry.expense);
@@ -704,8 +713,8 @@ function renderDailyChart() {
     data: {
       labels,
       datasets: [
-        { label: 'รายรับ',  data: incomeData,  backgroundColor: '#16A34A', borderRadius: 6 },
-        { label: 'รายจ่าย', data: expenseData, backgroundColor: '#EF4444', borderRadius: 6 },
+        { label: t('trends.chart.income'),  data: incomeData,  backgroundColor: '#16A34A', borderRadius: 6 },
+        { label: t('trends.chart.expense'), data: expenseData, backgroundColor: '#EF4444', borderRadius: 6 },
       ],
     },
     options: {
@@ -731,7 +740,7 @@ function renderCategoryBreakdown(type, containerId) {
   const container = document.getElementById(containerId);
   const txList = transactions.filter(t => t.type === type && isInCurrentCycle(t.date));
   if (txList.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-icon">${type === 'expense' ? '📊' : '💵'}</div><p>ยังไม่มีข้อมูล</p></div>`;
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">${type === 'expense' ? '📊' : '💵'}</div><p>${t('analytics.noData')}</p></div>`;
     return;
   }
   const totals = {};
@@ -771,8 +780,8 @@ function renderAll() {
 // ========================
 function openAddModal() {
   editingId = null;
-  document.getElementById('modal-title').textContent  = 'เพิ่มรายการใหม่';
-  document.getElementById('submit-label').textContent = 'เพิ่มรายการ';
+  document.getElementById('modal-title').textContent  = t('modal.addTitle');
+  document.getElementById('submit-label').textContent = t('modal.addBtn');
   document.getElementById('transaction-form').reset();
   document.getElementById('edit-id').value = '';
   const now = new Date();
@@ -786,8 +795,8 @@ function openEditModal(id) {
   const tx = transactions.find(t => t.id === id);
   if (!tx) return;
   editingId = id;
-  document.getElementById('modal-title').textContent  = 'แก้ไขรายการ';
-  document.getElementById('submit-label').textContent = 'บันทึกการแก้ไข';
+  document.getElementById('modal-title').textContent  = t('modal.editTitle');
+  document.getElementById('submit-label').textContent = t('modal.editBtn');
   document.getElementById('edit-id').value            = id;
   document.getElementById('input-amount').value       = tx.amount;
   document.getElementById('input-description').value  = tx.description;
@@ -835,7 +844,7 @@ async function handleFormSubmit(e) {
   const date        = document.getElementById('input-date').value;
 
   if (!amount || amount <= 0 || !description || !category || !date) {
-    showToast('กรุณากรอกข้อมูลให้ครบถ้วน', 'error'); return;
+    showToast(t('toast.fieldRequired'), 'error'); return;
   }
 
   const wasEditing = !!editingId;
@@ -853,11 +862,11 @@ async function handleFormSubmit(e) {
     if (wasEditing) {
       await fsUpdate(editingId, txData);
       editingId = null;
-      showToast('✅ บันทึกการแก้ไขแล้ว');
+      showToast(t('toast.editSaved'));
       closeModal('modal-overlay');
     } else {
       await fsAdd(txData);
-      showToast('✅ บันทึกแล้ว');
+      showToast(t('toast.saved'));
       if (isContinue) {
         document.getElementById('input-amount').value = '';
         document.getElementById('input-description').value = '';
@@ -880,7 +889,7 @@ async function handleFormSubmit(e) {
 // Current Date
 // ========================
 function updateCurrentDate() {
-  document.getElementById('current-date').textContent = new Date().toLocaleDateString('th-TH', {
+  document.getElementById('current-date').textContent = new Date().toLocaleDateString(dateLocale(), {
     weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
   });
 }
@@ -927,7 +936,7 @@ async function handleSlipScan(e) {
   const textEl     = progressEl.querySelector('.progress-text');
 
   progressEl.classList.add('active');
-  textEl.textContent = 'กำลังเตรียมรูปภาพ...';
+  textEl.textContent = t('modal.prepareImg');
   barEl.style.setProperty('--progress', '10%');
 
   try {
@@ -954,7 +963,7 @@ async function handleSlipScan(e) {
     previewImg.src = `data:${mimeType};base64,${base64Data}`; // always show preview locally
     previewContainer.style.display = 'block';
 
-    textEl.textContent = 'กำลังวิเคราะห์...';
+    textEl.textContent = t('modal.analyzing');
     barEl.style.setProperty('--progress', '40%');
 
     const scanRes = await fetch('/api/scan', {
@@ -972,16 +981,16 @@ async function handleSlipScan(e) {
     if (data.amount) {
       document.getElementById('input-amount').value = data.amount;
       if (data.description) document.getElementById('input-description').value = data.description;
-      showToast('✅ สแกนสำเร็จโดย Gemini 2.5 Flash');
+      showToast(t('toast.scanSuccess'));
     } else {
-      showToast('⚠️ AI ไม่พบยอดเงินในสลิปนี้', 'error');
+      showToast(t('toast.scanNoAmount'), 'error');
     }
 
     setTransactionType('expense');
     barEl.style.setProperty('--progress', '100%');
   } catch (err) {
     console.error('Scan error:', err);
-    showToast('⚠️ สแกนไม่ได้: ' + err.message + ' — รูปยังแนบอยู่', 'error', 6000);
+    showToast(t('toast.scanError', { msg: err.message }), 'error', 6000);
   } finally {
     setTimeout(() => progressEl.classList.remove('active'), 500);
   }
@@ -1004,7 +1013,7 @@ function updateDevToggleUI() {
   if (!btn) return;
   const isDev = DEV_EMAILS.includes(currentUser?.email);
   btn.style.display = isDev ? '' : 'none';
-  btn.textContent = userPlan === 'pro' ? '🔧 Dev: Pro → สลับ Free' : '🔧 Dev: Free → สลับ Pro';
+  btn.textContent = userPlan === 'pro' ? t('dev.switchFree') : t('dev.switchPro');
 }
 
 function handleDevToggle() {
@@ -1014,7 +1023,7 @@ function handleDevToggle() {
   userPlan = devPlanOverride;
   updatePlanUI();
   updateDevToggleUI();
-  showToast('🔧 Dev: สลับเป็น ' + (userPlan === 'pro' ? 'Pro ⭐' : 'Free'));
+  showToast(t('dev.toasted') + (userPlan === 'pro' ? 'Pro ⭐' : 'Free'));
 }
 
 // ========================
@@ -1023,7 +1032,7 @@ function handleDevToggle() {
 async function handleUpgradePayment() {
   // Check if Omise is configured
   if (OMISE_PUBLIC_KEY.includes('YOUR_OMISE')) {
-    showToast('ระบบชำระเงินกำลังเปิดใช้งาน เร็วๆ นี้', 'error', 4000);
+    showToast(t('toast.paymentSoon'), 'error', 4000);
     return;
   }
 
@@ -1041,12 +1050,12 @@ async function handleUpgradePayment() {
   window.OmiseCard.configure({ publicKey: OMISE_PUBLIC_KEY });
   window.OmiseCard.open({
     frameLabel:  'MoneyFlow Pro',
-    submitLabel: 'ชำระเงิน 79 ฿/เดือน',
+    submitLabel: t('upgrade.pay'),
     currency:    'THB',
     amount:      7900,
     onCreateTokenSuccess: async (token) => {
       try {
-        showLoading('กำลังประมวลผลการชำระเงิน...');
+        showLoading(t('loading.payment'));
         closeModal('upgrade-modal-overlay');
 
         const res = await fetch('/api/payment-create', {
@@ -1060,9 +1069,9 @@ async function handleUpgradePayment() {
           userPlan = 'pro';
           await fsSaveMeta({ plan: 'pro', pro_until: result.pro_until });
           updatePlanUI();
-          showToast('🎉 อัปเกรดเป็น Pro สำเร็จ!', 'success', 5000);
+          showToast(t('toast.paymentSuccess'), 'success', 5000);
         } else {
-          showToast('❌ ชำระเงินไม่สำเร็จ: ' + (result.error || 'ลองใหม่อีกครั้ง'), 'error');
+          showToast(t('toast.paymentFail') + (result.error || ''), 'error');
         }
       } catch (err) {
         showToast('❌ ' + err.message, 'error');
@@ -1080,28 +1089,31 @@ async function handleUpgradePayment() {
 function openChangelog() {
   const body = document.getElementById('changelog-body');
   const typeIcon = { new: '✨', fix: '🐛', improve: '⚡' };
-  const typeLabel = { new: 'ใหม่', fix: 'แก้ไข', improve: 'ปรับปรุง' };
+  const loc = dateLocale();
   body.innerHTML = CHANGELOG.map(v => `
     <div class="cl-version">
       <div class="cl-version-header">
         <span class="cl-version-num">v${v.version}</span>
         <span class="cl-version-label">${v.label}</span>
-        <span class="cl-version-date">${new Date(v.date).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+        <span class="cl-version-date">${new Date(v.date).toLocaleDateString(loc, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
       </div>
       <ul class="cl-list">
         ${v.changes.map(c => `
           <li class="cl-item cl-${c.type}">
             <span class="cl-icon">${typeIcon[c.type] || '•'}</span>
-            <span class="cl-tag ${c.type}">${typeLabel[c.type] || c.type}</span>
+            <span class="cl-tag ${c.type}">${t(`cl.${c.type}`) || c.type}</span>
             <span class="cl-text">${c.text}</span>
           </li>`).join('')}
       </ul>
     </div>`).join('');
   document.getElementById('changelog-overlay').classList.add('open');
-  if (window.innerWidth <= 900) document.getElementById('sidebar').classList.remove('open');
+  // Close settings if open
+  closeModal('settings-modal-overlay');
 }
 
 function init() {
+  // Apply translations first (uses saved/detected language)
+  applyI18n();
   updateCurrentDate();
   populateCategorySelect('income');
   populateFilterCategory();
@@ -1149,11 +1161,11 @@ function init() {
     pendingDeleteId = null;
     closeModal('delete-overlay');
     try {
-      showLoading('กำลังลบ...');
+      showLoading(t('loading.deleting'));
       await fsDelete(id);
-      showToast('🗑️ ลบรายการแล้ว');
+      showToast(t('toast.deleted'));
     } catch (err) {
-      showToast('❌ ลบไม่สำเร็จ: ' + err.message, 'error');
+      showToast(t('toast.deleteError') + err.message, 'error');
     } finally {
       hideLoading();
     }
@@ -1162,16 +1174,17 @@ function init() {
   document.getElementById('delete-cancel-x').addEventListener('click', () => closeModal('delete-overlay'));
   document.getElementById('delete-overlay').addEventListener('click',  e => { if (e.target === e.currentTarget) closeModal('delete-overlay'); });
 
-  // Clear all
+  // Clear all (now inside settings modal)
   document.getElementById('btn-clear-all').addEventListener('click', async () => {
-    if (transactions.length === 0) { showToast('ไม่มีข้อมูลให้ล้าง', 'error'); return; }
-    if (!confirm('ต้องการล้างข้อมูลทั้งหมดหรือไม่?')) return;
+    if (transactions.length === 0) { showToast(t('toast.clearNone'), 'error'); return; }
+    if (!confirm(t('confirm.clearAll'))) return;
+    closeModal('settings-modal-overlay');
     try {
-      showLoading('กำลังล้างข้อมูล...');
+      showLoading(t('loading.clearing'));
       const batch = writeBatch(db);
       transactions.forEach(tx => batch.delete(doc(txCol(), tx.id)));
       await batch.commit();
-      showToast('🗑️ ล้างข้อมูลทั้งหมดแล้ว');
+      showToast(t('toast.clearAll'));
     } catch (err) {
       showToast('❌ ' + err.message, 'error');
     } finally {
@@ -1189,6 +1202,7 @@ function init() {
   // Settings
   document.getElementById('btn-open-settings').addEventListener('click', () => {
     document.getElementById('input-cutoff-day').value = cutoffDay;
+    document.getElementById('select-language').value   = getLanguage();
     openModal('settings-modal-overlay');
   });
   document.getElementById('settings-modal-close').addEventListener('click', () => closeModal('settings-modal-overlay'));
@@ -1196,25 +1210,38 @@ function init() {
     if (e.target === e.currentTarget) closeModal('settings-modal-overlay');
   });
   document.getElementById('btn-save-settings').addEventListener('click', async () => {
-    const day = parseInt(document.getElementById('input-cutoff-day').value);
-    if (day >= 1 && day <= 31) {
-      cutoffDay = day;
-      localStorage.setItem('mf_cutoff_day', cutoffDay);
-      try {
-        await fsSaveMeta({ cutoff_day: day });
-        showToast('บันทึกตั้งค่าแล้ว ✅');
-      } catch {
-        showToast('บันทึกในเครื่องแล้ว (ซิงค์ไม่ได้)', 'error');
-      }
-      closeModal('settings-modal-overlay');
-      renderAll();
-    } else {
-      showToast('กรุณากรอกวันที่ระหว่าง 1-31', 'error');
+    const day  = parseInt(document.getElementById('input-cutoff-day').value);
+    const lang = document.getElementById('select-language').value;
+    if (day < 1 || day > 31 || isNaN(day)) {
+      showToast(t('toast.cutoffError'), 'error'); return;
     }
+    // Apply language change first
+    const langChanged = lang !== getLanguage();
+    if (langChanged) {
+      setLanguage(lang);
+      applyI18n();
+      // Refresh dynamic UI that uses t()
+      updateCurrentDate();
+      populateCategorySelect(currentType);
+      populateFilterCategory();
+      setSyncStatus(document.getElementById('sync-badge').className.replace('sync-badge ', '').trim() || 'offline');
+    }
+    // Save cutoff day
+    cutoffDay = day;
+    localStorage.setItem('mf_cutoff_day', cutoffDay);
+    try {
+      await fsSaveMeta({ cutoff_day: day });
+      showToast(t('toast.settingsSaved'));
+    } catch {
+      showToast(t('toast.settingsLocal'), 'error');
+    }
+    closeModal('settings-modal-overlay');
+    renderAll();
   });
 
   // Upgrade modal
   document.getElementById('btn-upgrade').addEventListener('click', () => openUpgradeModal());
+  document.getElementById('btn-trends-upgrade')?.addEventListener('click', () => openUpgradeModal(t('trends.upgradeBtn')));
   document.getElementById('upgrade-modal-close').addEventListener('click', () => closeModal('upgrade-modal-overlay'));
   document.getElementById('upgrade-modal-overlay').addEventListener('click', e => {
     if (e.target === e.currentTarget) closeModal('upgrade-modal-overlay');
@@ -1234,13 +1261,11 @@ function init() {
   // Sign out
   document.getElementById('btn-signout').addEventListener('click', handleSignOut);
 
-  // Changelog
+  // Changelog (button is now inside settings modal)
   document.getElementById('btn-changelog').addEventListener('click', openChangelog);
-  document.getElementById('changelog-close').addEventListener('click', () => {
-    document.getElementById('changelog-overlay').classList.remove('open');
-  });
+  document.getElementById('changelog-close').addEventListener('click', () => closeModal('changelog-overlay'));
   document.getElementById('changelog-overlay').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+    if (e.target === e.currentTarget) closeModal('changelog-overlay');
   });
 
   // Slip lightbox close

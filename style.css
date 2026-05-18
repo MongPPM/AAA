@@ -152,14 +152,13 @@ a { color: var(--indigo); text-decoration: none; }
   flex-direction: column;
   gap: 2px;
 }
-.btn-sync, .btn-clear-all {
+.btn-sync {
   display: flex; align-items: center; gap: 8px;
   color: var(--text-2); font-size: 13px;
   padding: 9px 12px; border-radius: var(--radius-sm);
   transition: all var(--transition); width: 100%;
 }
 .btn-sync:hover { color: var(--indigo); background: var(--indigo-light); }
-.btn-clear-all:hover { color: var(--red); background: var(--red-light); }
 .sync-icon { display: inline-block; transition: transform 0.5s; }
 .btn-sync:hover .sync-icon { transform: rotate(180deg); }
 
@@ -847,8 +846,25 @@ a { color: var(--indigo); text-decoration: none; }
 /* ========================
    Settings Modal
    ======================== */
-.settings-modal { max-width: 400px; }
-.settings-body { padding: 0; }
+.settings-modal { max-width: 420px; }
+.settings-body { padding: 0; display: flex; flex-direction: column; gap: 0; }
+
+.settings-divider {
+  border: none; border-top: 1px solid var(--border);
+  margin: 12px 0 4px;
+}
+
+.btn-settings-action {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 10px 4px;
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 13px;
+  color: var(--text-2); border-radius: var(--radius-sm);
+  transition: all var(--transition); text-align: left;
+}
+.btn-settings-action:hover { color: var(--indigo); background: var(--indigo-light); }
+.btn-settings-action.danger { color: var(--red); }
+.btn-settings-action.danger:hover { background: var(--red-light); }
 .settings-btn {
   background: transparent; border: none; cursor: pointer;
   font-size: 17px; color: var(--text-2);
@@ -1129,14 +1145,7 @@ a { color: var(--indigo); text-decoration: none; }
 }
 .btn-signout:hover { color: var(--red); background: var(--red-light); }
 
-.btn-changelog {
-  display: flex; align-items: center; gap: 8px;
-  color: var(--text-2); font-size: 13px;
-  padding: 9px 12px; border-radius: var(--radius-sm);
-  transition: all var(--transition); width: 100%;
-  background: none; border: none; cursor: pointer; font-family: inherit;
-}
-.btn-changelog:hover { color: var(--indigo); background: var(--indigo-light); }
+/* .btn-changelog moved to .btn-settings-action in Settings Modal section */
 
 /* ========================
    Changelog Modal

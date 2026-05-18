@@ -21,7 +21,7 @@
     <!-- Global Loading Overlay -->
     <div class="loading-overlay" id="loading-overlay">
       <div class="loading-spinner"></div>
-      <p class="loading-text" id="loading-text">กำลังโหลด...</p>
+      <p class="loading-text" id="loading-text" data-i18n="loading.default">กำลังโหลด...</p>
     </div>
 
     <!-- ======================== -->
@@ -33,7 +33,7 @@
           <img src="./logo.png" alt="MoneyFlow" onerror="this.style.display='none'" />
         </div>
         <h1 class="login-title">MoneyFlow</h1>
-        <p class="login-subtitle">บันทึกรายรับ-รายจ่ายส่วนตัว<br/>ข้อมูลของคุณ เห็นแค่คุณคนเดียว</p>
+        <p class="login-subtitle" data-i18n-html="login.subtitle">บันทึกรายรับ-รายจ่ายส่วนตัว<br/>ข้อมูลของคุณ เห็นแค่คุณคนเดียว</p>
         <button class="btn-google-signin" id="btn-google-signin">
           <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
             <path d="M43.611 20.083H42V20H24v8h11.303C33.97 32.19 29.418 35 24 35c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" fill="#FFC107"/>
@@ -41,9 +41,9 @@
             <path d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" fill="#4CAF50"/>
             <path d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C42.022 35.851 44 30.138 44 24c0-1.341-.138-2.65-.389-3.917z" fill="#1976D2"/>
           </svg>
-          เข้าสู่ระบบด้วย Google
+          <span data-i18n="login.google">เข้าสู่ระบบด้วย Google</span>
         </button>
-        <p class="login-note">ข้อมูลทั้งหมดเก็บในบัญชี Google ของคุณ<br/>ไม่มีค่าใช้จ่าย · ปลอดภัย · ใช้ได้ทุกอุปกรณ์</p>
+        <p class="login-note" data-i18n-html="login.note">ข้อมูลทั้งหมดเก็บในบัญชี Google ของคุณ<br/>ไม่มีค่าใช้จ่าย · ปลอดภัย · ใช้ได้ทุกอุปกรณ์</p>
       </div>
     </div>
 
@@ -64,7 +64,7 @@
           <div class="sidebar-header-row">
             <div class="sync-badge" id="sync-badge" title="สถานะซิงค์">
               <span class="sync-dot"></span>
-              <span class="sync-label" id="sync-label">ออฟไลน์</span>
+              <span class="sync-label" id="sync-label" data-i18n="sync.offline">ออฟไลน์</span>
             </div>
             <button class="settings-btn" id="btn-open-settings" title="ตั้งค่าระบบ">⚙️</button>
           </div>
@@ -72,16 +72,16 @@
 
         <nav class="sidebar-nav">
           <button class="nav-item active" data-view="dashboard" id="nav-dashboard">
-            <span class="nav-icon">📊</span><span>ภาพรวม</span>
+            <span class="nav-icon">📊</span><span data-i18n="nav.dashboard">ภาพรวม</span>
           </button>
           <button class="nav-item" data-view="transactions" id="nav-transactions">
-            <span class="nav-icon">📋</span><span>รายการทั้งหมด</span>
+            <span class="nav-icon">📋</span><span data-i18n="nav.transactions">รายการทั้งหมด</span>
           </button>
           <button class="nav-item" data-view="analytics" id="nav-analytics">
-            <span class="nav-icon">📊</span><span>หมวดหมู่</span>
+            <span class="nav-icon">📊</span><span data-i18n="nav.analytics">หมวดหมู่</span>
           </button>
           <button class="nav-item" data-view="trends" id="nav-trends">
-            <span class="nav-icon">📈</span><span>แนวโน้ม</span>
+            <span class="nav-icon">📈</span><span data-i18n="nav.trends">แนวโน้ม</span>
           </button>
         </nav>
 
@@ -95,12 +95,15 @@
             </div>
           </div>
           <!-- Upgrade (hidden when Pro) -->
-          <button class="btn-upgrade" id="btn-upgrade">⭐ อัปเกรดเป็น Pro</button>
-          <!-- Clear & Signout -->
+          <button class="btn-upgrade" id="btn-upgrade">
+            <span data-i18n="sidebar.upgrade">⭐ อัปเกรดเป็น Pro</span>
+          </button>
+          <!-- Dev toggle (only dev accounts) -->
           <button class="btn-dev-toggle" id="btn-dev-toggle" style="display:none"></button>
-          <button class="btn-clear-all"  id="btn-clear-all">  <span>🗑️</span> ล้างข้อมูล</button>
-          <button class="btn-changelog"  id="btn-changelog">  <span>🆕</span> อัปเดต</button>
-          <button class="btn-signout"    id="btn-signout">    <span>🚪</span> ออกจากระบบ</button>
+          <!-- Sign out -->
+          <button class="btn-signout" id="btn-signout">
+            <span>🚪</span> <span data-i18n="sidebar.signout">ออกจากระบบ</span>
+          </button>
           <div class="app-version" id="app-version"></div>
         </div>
       </aside>
@@ -109,11 +112,11 @@
       <main class="main-content">
         <header class="top-bar">
           <button class="menu-toggle" id="menu-toggle" aria-label="toggle menu">☰</button>
-          <div class="top-bar-title" id="page-title">ภาพรวม</div>
+          <div class="top-bar-title" id="page-title" data-i18n="page.dashboard">ภาพรวม</div>
           <div class="top-bar-right">
             <div class="current-date" id="current-date"></div>
             <button class="btn-add-primary" id="btn-open-modal">
-              <span>+</span> เพิ่มรายการ
+              <span data-i18n="topbar.add">+ เพิ่มรายการ</span>
             </button>
           </div>
         </header>
@@ -122,24 +125,24 @@
         <section class="view active" id="view-dashboard">
           <div class="summary-cards">
             <div class="card card-balance">
-              <div class="card-label">ยอดคงเหลือ</div>
+              <div class="card-label" data-i18n="dash.balance">ยอดคงเหลือ</div>
               <div class="card-amount" id="total-balance">฿0.00</div>
               <div class="card-sub" id="balance-trend"></div>
             </div>
             <div class="card card-income">
               <div class="card-icon">↑</div>
-              <div class="card-label">รายรับ</div>
+              <div class="card-label" data-i18n="dash.income">รายรับ</div>
               <div class="card-amount" id="total-income">฿0.00</div>
             </div>
             <div class="card card-expense">
               <div class="card-icon">↓</div>
-              <div class="card-label">รายจ่าย</div>
+              <div class="card-label" data-i18n="dash.expense">รายจ่าย</div>
               <div class="card-amount" id="total-expense">฿0.00</div>
             </div>
           </div>
 
           <div class="section-card">
-            <h2 class="section-title">สัดส่วนรายจ่าย</h2>
+            <h2 class="section-title" data-i18n="dash.expenseRatio">สัดส่วนรายจ่าย</h2>
             <div class="expense-ratio-bar">
               <div class="ratio-fill" id="ratio-fill"></div>
             </div>
@@ -151,13 +154,13 @@
 
           <div class="section-card">
             <div class="section-header">
-              <h2 class="section-title">รายการล่าสุด</h2>
-              <button class="link-btn" data-view="transactions" id="see-all-btn">ดูทั้งหมด →</button>
+              <h2 class="section-title" data-i18n="dash.recent">รายการล่าสุด</h2>
+              <button class="link-btn" data-view="transactions" id="see-all-btn" data-i18n="dash.seeAll">ดูทั้งหมด →</button>
             </div>
             <div class="transaction-list" id="recent-list">
               <div class="empty-state" id="empty-recent">
                 <div class="empty-icon">💰</div>
-                <p>ยังไม่มีรายการ<br/>กด "เพิ่มรายการ" เพื่อเริ่มต้น</p>
+                <p data-i18n-html="dash.empty">ยังไม่มีรายการ<br/>กด "เพิ่มรายการ" เพื่อเริ่มต้น</p>
               </div>
             </div>
           </div>
@@ -167,24 +170,24 @@
         <section class="view" id="view-transactions">
           <div class="section-card">
             <div class="section-header">
-              <h2 class="section-title">รายการทั้งหมด</h2>
+              <h2 class="section-title" data-i18n="tx.title">รายการทั้งหมด</h2>
               <div class="tx-controls">
                 <div class="view-mode-toggle">
-                  <button class="view-mode-btn active" id="btn-view-list" title="มุมมองรายการ">☰ รายการ</button>
-                  <button class="view-mode-btn" id="btn-view-split" title="แยกรายรับ/รายจ่าย">⊞ แยก</button>
+                  <button class="view-mode-btn active" id="btn-view-list" title="มุมมองรายการ" data-i18n="tx.viewList">☰ รายการ</button>
+                  <button class="view-mode-btn" id="btn-view-split" title="แยกรายรับ/รายจ่าย" data-i18n="tx.viewSplit">⊞ แยก</button>
                 </div>
                 <div class="view-mode-toggle">
-                  <button class="view-mode-btn" id="btn-range-all" title="ทุกรายการ">ทั้งหมด</button>
-                  <button class="view-mode-btn active" id="btn-range-cycle" title="รอบบิลปัจจุบัน">รอบบิล</button>
+                  <button class="view-mode-btn" id="btn-range-all" title="ทุกรายการ" data-i18n="tx.rangeAll">ทั้งหมด</button>
+                  <button class="view-mode-btn active" id="btn-range-cycle" title="รอบบิลปัจจุบัน" data-i18n="tx.rangeCycle">รอบบิล</button>
                 </div>
                 <div class="filter-group">
                   <select class="filter-select" id="filter-type">
-                    <option value="all">ทุกประเภท</option>
-                    <option value="income">รายรับ</option>
-                    <option value="expense">รายจ่าย</option>
+                    <option value="all" data-i18n="tx.filterAllTypes">ทุกประเภท</option>
+                    <option value="income" data-i18n="tx.filterIncome">รายรับ</option>
+                    <option value="expense" data-i18n="tx.filterExpense">รายจ่าย</option>
                   </select>
                   <select class="filter-select" id="filter-category">
-                    <option value="all">ทุกหมวดหมู่</option>
+                    <option value="all" data-i18n="tx.filterAllCats">ทุกหมวดหมู่</option>
                   </select>
                 </div>
               </div>
@@ -194,7 +197,7 @@
               <div class="transaction-list" id="all-list">
                 <div class="empty-state" id="empty-all">
                   <div class="empty-icon">📋</div>
-                  <p>ไม่มีรายการที่ตรงกับเงื่อนไข</p>
+                  <p data-i18n="tx.noResults">ไม่มีรายการที่ตรงกับเงื่อนไข</p>
                 </div>
               </div>
             </div>
@@ -204,7 +207,7 @@
               <div class="balance-scale" id="balance-scale">
                 <div class="scale-amounts">
                   <span class="scale-amount income" id="scale-income-total">฿0.00</span>
-                  <span class="scale-verdict" id="scale-verdict">เท่ากัน</span>
+                  <span class="scale-verdict" id="scale-verdict" data-i18n="tx.scale.equal">เท่ากัน</span>
                   <span class="scale-amount expense" id="scale-expense-total">฿0.00</span>
                 </div>
                 <div class="scale-visual">
@@ -217,21 +220,21 @@
                   </div>
                 </div>
                 <div class="scale-labels">
-                  <span>รายรับ</span>
-                  <span>รายจ่าย</span>
+                  <span data-i18n="tx.scale.income">รายรับ</span>
+                  <span data-i18n="tx.scale.expense">รายจ่าย</span>
                 </div>
               </div>
               <div class="tx-split-grid">
                 <div class="tx-split-col income-col">
-                  <div class="tx-split-header income">💰 รายรับ</div>
+                  <div class="tx-split-header income" data-i18n="tx.split.income">💰 รายรับ</div>
                   <div class="transaction-list" id="split-income-list">
-                    <div class="empty-state" id="empty-split-income"><div class="empty-icon">💰</div><p>ยังไม่มีรายรับ</p></div>
+                    <div class="empty-state" id="empty-split-income"><div class="empty-icon">💰</div><p data-i18n="tx.split.emptyIncome">ยังไม่มีรายรับ</p></div>
                   </div>
                 </div>
                 <div class="tx-split-col expense-col">
-                  <div class="tx-split-header expense">💸 รายจ่าย</div>
+                  <div class="tx-split-header expense" data-i18n="tx.split.expense">💸 รายจ่าย</div>
                   <div class="transaction-list" id="split-expense-list">
-                    <div class="empty-state" id="empty-split-expense"><div class="empty-icon">💸</div><p>ยังไม่มีรายจ่าย</p></div>
+                    <div class="empty-state" id="empty-split-expense"><div class="empty-icon">💸</div><p data-i18n="tx.split.emptyExpense">ยังไม่มีรายจ่าย</p></div>
                   </div>
                 </div>
               </div>
@@ -244,8 +247,8 @@
           <div class="section-card">
             <h2 class="section-title" id="trends-title">แนวโน้มรายวัน (รอบบิลปัจจุบัน)</h2>
             <div class="upgrade-notice" id="trends-free-notice" style="display:none">
-              📊 Free plan ดูย้อนหลังได้สูงสุด 30 วัน &nbsp;—&nbsp;
-              <button class="link-btn" onclick="openUpgradeModal('อัปเกรด Pro เพื่อดูแนวโน้มตามรอบบิล')">อัปเกรดเป็น Pro ↗</button>
+              <span id="trends-free-text" data-i18n="trends.freeNotice">📊 Free plan ดูย้อนหลังได้สูงสุด 30 วัน — </span>
+              <button class="link-btn" id="btn-trends-upgrade" data-i18n="trends.upgradeBtn">อัปเกรดเป็น Pro ↗</button>
             </div>
             <div class="chart-container">
               <canvas id="dailyTrendChart"></canvas>
@@ -256,15 +259,15 @@
         <!-- Analytics View -->
         <section class="view" id="view-analytics">
           <div class="section-card">
-            <h2 class="section-title">รายจ่ายแยกตามหมวดหมู่</h2>
+            <h2 class="section-title" data-i18n="analytics.expenseTitle">รายจ่ายแยกตามหมวดหมู่</h2>
             <div class="category-breakdown" id="category-breakdown">
-              <div class="empty-state"><div class="empty-icon">📊</div><p>ยังไม่มีข้อมูล</p></div>
+              <div class="empty-state"><div class="empty-icon">📊</div><p data-i18n="analytics.noData">ยังไม่มีข้อมูล</p></div>
             </div>
           </div>
           <div class="section-card">
-            <h2 class="section-title">รายรับแยกตามหมวดหมู่</h2>
+            <h2 class="section-title" data-i18n="analytics.incomeTitle">รายรับแยกตามหมวดหมู่</h2>
             <div class="category-breakdown" id="income-breakdown">
-              <div class="empty-state"><div class="empty-icon">💵</div><p>ยังไม่มีข้อมูล</p></div>
+              <div class="empty-state"><div class="empty-icon">💵</div><p data-i18n="analytics.noData">ยังไม่มีข้อมูล</p></div>
             </div>
           </div>
         </section>
@@ -277,18 +280,19 @@
     <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal">
         <div class="modal-header">
-          <h2 class="modal-title" id="modal-title">เพิ่มรายการใหม่</h2>
+          <h2 class="modal-title" id="modal-title" data-i18n="modal.addTitle">เพิ่มรายการใหม่</h2>
           <button class="modal-close" id="modal-close">✕</button>
         </div>
         <div class="scan-section">
           <button type="button" class="btn-scan" id="btn-scan">
-            <span class="scan-icon">📸</span> สแกนสลิป / แนบรูปภาพ
+            <span class="scan-icon">📸</span>
+            <span data-i18n="modal.scan"> สแกนสลิป / แนบรูปภาพ</span>
           </button>
           <div class="scan-info-row" id="scan-info"></div>
           <input type="file" id="input-slip" accept="image/*" style="display:none;" />
           <div id="scan-progress" class="scan-progress">
             <div class="progress-bar"></div>
-            <span class="progress-text">กำลังสแกน...</span>
+            <span class="progress-text" data-i18n="modal.scanning">กำลังสแกน...</span>
           </div>
           <div id="image-preview-container" class="image-preview-container" style="display:none;">
             <img id="image-preview" src="" alt="Preview" />
@@ -296,35 +300,39 @@
           </div>
         </div>
         <div class="type-toggle">
-          <button class="type-btn active" id="type-income" data-type="income"><span>↑</span> รายรับ</button>
-          <button class="type-btn" id="type-expense" data-type="expense"><span>↓</span> รายจ่าย</button>
+          <button class="type-btn active" id="type-income" data-type="income">
+            <span>↑</span> <span data-i18n="modal.type.income"> รายรับ</span>
+          </button>
+          <button class="type-btn" id="type-expense" data-type="expense">
+            <span>↓</span> <span data-i18n="modal.type.expense"> รายจ่าย</span>
+          </button>
         </div>
         <form id="transaction-form" autocomplete="off">
           <input type="hidden" id="edit-id" value="" />
           <div class="form-group">
-            <label for="input-amount">จำนวนเงิน (฿)</label>
-            <input type="number" id="input-amount" class="form-input" placeholder="0.00" min="0" step="0.01" required />
+            <label for="input-amount" data-i18n="modal.amountLabel">จำนวนเงิน (฿)</label>
+            <input type="number" id="input-amount" class="form-input" placeholder="0.00" data-i18n-ph="modal.amountPlaceholder" min="0" step="0.01" required />
           </div>
           <div class="form-group">
-            <label for="input-description">รายละเอียด</label>
-            <input type="text" id="input-description" class="form-input" placeholder="เช่น ค่าอาหารกลางวัน" required />
+            <label for="input-description" data-i18n="modal.descLabel">รายละเอียด</label>
+            <input type="text" id="input-description" class="form-input" placeholder="เช่น ค่าอาหารกลางวัน" data-i18n-ph="modal.descPlaceholder" required />
           </div>
           <div class="form-group">
-            <label for="input-category">หมวดหมู่</label>
+            <label for="input-category" data-i18n="modal.catLabel">หมวดหมู่</label>
             <select id="input-category" class="form-input" required></select>
           </div>
           <div class="form-group">
-            <label for="input-date">วันและเวลา</label>
+            <label for="input-date" data-i18n="modal.dateLabel">วันและเวลา</label>
             <input type="datetime-local" id="input-date" class="form-input" required />
           </div>
           <div class="form-group-inline">
             <label class="checkbox-container">
               <input type="checkbox" id="check-continue" />
-              <span class="checkbox-label">บันทึกและเพิ่มรายการต่อไป</span>
+              <span class="checkbox-label" data-i18n="modal.continueLabel">บันทึกและเพิ่มรายการต่อไป</span>
             </label>
           </div>
           <button type="submit" class="btn-submit" id="btn-submit">
-            <span id="submit-label">เพิ่มรายการ</span>
+            <span id="submit-label" data-i18n="modal.addBtn">เพิ่มรายการ</span>
           </button>
         </form>
       </div>
@@ -336,13 +344,13 @@
     <div class="modal-overlay" id="delete-overlay" role="dialog" aria-modal="true">
       <div class="modal modal-sm">
         <div class="modal-header">
-          <h2 class="modal-title">ยืนยันการลบ</h2>
+          <h2 class="modal-title" data-i18n="delete.title">ยืนยันการลบ</h2>
           <button class="modal-close" id="delete-cancel-x">✕</button>
         </div>
-        <p class="confirm-text">คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้?</p>
+        <p class="confirm-text" data-i18n="delete.confirm">คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้?</p>
         <div class="confirm-actions">
-          <button class="btn-cancel" id="delete-cancel">ยกเลิก</button>
-          <button class="btn-danger" id="delete-confirm">ลบ</button>
+          <button class="btn-cancel" id="delete-cancel" data-i18n="delete.cancel">ยกเลิก</button>
+          <button class="btn-danger" id="delete-confirm" data-i18n="delete.delete">ลบ</button>
         </div>
       </div>
     </div>
@@ -353,16 +361,43 @@
     <div class="modal-overlay" id="settings-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
       <div class="modal settings-modal">
         <div class="modal-header">
-          <h2 class="modal-title" id="settings-modal-title">ตั้งค่าระบบ</h2>
+          <h2 class="modal-title" id="settings-modal-title" data-i18n="settings.title">ตั้งค่าระบบ</h2>
           <button class="modal-close" id="settings-modal-close">✕</button>
         </div>
-        <div class="settings-body" style="padding:0">
+        <div class="settings-body">
+
+          <!-- Billing cutoff -->
           <div class="form-group">
-            <label for="input-cutoff-day">วันที่ตัดรอบบิลรายเดือน (1–31)</label>
+            <label for="input-cutoff-day" data-i18n="settings.cutoffLabel">วันที่ตัดรอบบิลรายเดือน (1–31)</label>
             <input type="number" id="input-cutoff-day" class="form-input" min="1" max="31" value="1" />
-            <p class="form-help">ตัวอย่าง: ตั้งเป็นวันที่ 25 → รอบนับตั้งแต่ 25 ของเดือนก่อน ถึง 24 ของเดือนนี้</p>
+            <p class="form-help" data-i18n="settings.cutoffHelp">ตัวอย่าง: ตั้งเป็นวันที่ 25 → รอบนับตั้งแต่ 25 ของเดือนก่อน ถึง 24 ของเดือนนี้</p>
           </div>
-          <button class="btn-submit btn-primary" id="btn-save-settings" style="margin-top:16px">บันทึกการตั้งค่า</button>
+
+          <!-- Language -->
+          <div class="form-group">
+            <label for="select-language" data-i18n="settings.langLabel">ภาษา / Language</label>
+            <select id="select-language" class="form-input">
+              <option value="th">ภาษาไทย</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+
+          <!-- Save button -->
+          <button class="btn-submit btn-primary" id="btn-save-settings" style="margin-top:8px" data-i18n="settings.save">บันทึกการตั้งค่า</button>
+
+          <!-- Divider -->
+          <div class="settings-divider"></div>
+
+          <!-- Update History (moved from sidebar) -->
+          <button class="btn-settings-action" id="btn-changelog">
+            <span data-i18n="settings.changelog">🆕 ประวัติอัปเดต</span>
+          </button>
+
+          <!-- Clear All Data (moved from sidebar) -->
+          <button class="btn-settings-action danger" id="btn-clear-all">
+            <span data-i18n="settings.clearData">🗑️ ล้างข้อมูลทั้งหมด</span>
+          </button>
+
         </div>
       </div>
     </div>
@@ -373,41 +408,41 @@
     <div class="modal-overlay" id="upgrade-modal-overlay" role="dialog" aria-modal="true">
       <div class="modal modal-sm upgrade-modal">
         <div class="modal-header">
-          <h2 class="modal-title">⭐ อัปเกรดเป็น Pro</h2>
+          <h2 class="modal-title" data-i18n="upgrade.title">⭐ อัปเกรดเป็น Pro</h2>
           <button class="modal-close" id="upgrade-modal-close">✕</button>
         </div>
         <p class="upgrade-reason" id="upgrade-reason"></p>
 
         <div class="plan-compare">
           <div class="plan-col plan-free">
-            <div class="plan-name">Free</div>
-            <div class="plan-price">ฟรี</div>
+            <div class="plan-name" data-i18n="upgrade.free">Free</div>
+            <div class="plan-price" data-i18n="upgrade.freePrice">ฟรี</div>
             <ul class="plan-features">
               <li>✅ บันทึกรายการไม่จำกัด</li>
               <li>✅ กราฟและสถิติ</li>
-              <li>✅ สแกนสลิป 10 ครั้ง/เดือน</li>
+              <li>✅ สแกนสลิป 5 ครั้ง/วัน</li>
               <li class="muted">❌ Export CSV/PDF</li>
-              <li class="muted">❌ ข้อมูลย้อนหลังไม่จำกัด</li>
+              <li class="muted">❌ เก็บรูปสลิป</li>
             </ul>
           </div>
           <div class="plan-col plan-pro">
-            <div class="plan-badge-top">แนะนำ</div>
-            <div class="plan-name">Pro</div>
+            <div class="plan-badge-top" data-i18n="upgrade.recommended">แนะนำ</div>
+            <div class="plan-name" data-i18n="upgrade.pro">Pro</div>
             <div class="plan-price">79 ฿<span>/เดือน</span></div>
             <ul class="plan-features">
               <li>✅ ทุกอย่างใน Free</li>
               <li>✅ สแกนสลิปไม่จำกัด</li>
+              <li>✅ เก็บรูปสลิป 3 เดือน</li>
               <li>✅ Export CSV/PDF</li>
-              <li>✅ ข้อมูลไม่จำกัด</li>
               <li>✅ Priority support</li>
             </ul>
           </div>
         </div>
 
-        <button class="btn-submit btn-pay" id="btn-pay-omise">
+        <button class="btn-submit btn-pay" id="btn-pay-omise" data-i18n="upgrade.pay">
           ชำระเงิน 79 ฿/เดือน
         </button>
-        <p class="upgrade-note">ยกเลิกได้ทุกเมื่อ · ชำระผ่านบัตรเครดิต / PromptPay</p>
+        <p class="upgrade-note" data-i18n="upgrade.note">ยกเลิกได้ทุกเมื่อ · ชำระผ่านบัตรเครดิต / PromptPay</p>
       </div>
     </div>
 
@@ -415,19 +450,19 @@
     <nav class="bottom-nav" id="bottom-nav">
       <button class="bottom-nav-item active" data-view="dashboard">
         <span class="bottom-nav-icon">📊</span>
-        <span class="bottom-nav-label">ภาพรวม</span>
+        <span class="bottom-nav-label" data-i18n="bnav.dashboard">ภาพรวม</span>
       </button>
       <button class="bottom-nav-item" data-view="transactions">
         <span class="bottom-nav-icon">📋</span>
-        <span class="bottom-nav-label">รายการ</span>
+        <span class="bottom-nav-label" data-i18n="bnav.transactions">รายการ</span>
       </button>
       <button class="bottom-nav-item" data-view="analytics">
         <span class="bottom-nav-icon">📊</span>
-        <span class="bottom-nav-label">หมวดหมู่</span>
+        <span class="bottom-nav-label" data-i18n="bnav.analytics">หมวดหมู่</span>
       </button>
       <button class="bottom-nav-item" data-view="trends">
         <span class="bottom-nav-icon">📈</span>
-        <span class="bottom-nav-label">แนวโน้ม</span>
+        <span class="bottom-nav-label" data-i18n="bnav.trends">แนวโน้ม</span>
       </button>
     </nav>
 
@@ -438,7 +473,7 @@
     <div class="modal-overlay" id="changelog-overlay">
       <div class="modal-box changelog-box">
         <div class="modal-header">
-          <h2 class="modal-title">ประวัติอัปเดต</h2>
+          <h2 class="modal-title" data-i18n="changelog.title">ประวัติอัปเดต</h2>
           <button class="modal-close" id="changelog-close">✕</button>
         </div>
         <div class="changelog-body" id="changelog-body"></div>
