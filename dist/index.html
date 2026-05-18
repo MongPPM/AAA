@@ -14,8 +14,8 @@
     <link rel="icon" type="image/png" href="/assets/logo-D-a2ymq_.png" />
     <link rel="apple-touch-icon" href="/assets/logo-D-a2ymq_.png" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script type="module" crossorigin src="/assets/index-DQWlC737.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-D4ltx2jC.css">
+    <script type="module" crossorigin src="/assets/index-CmfMh3Ny.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DK-j3J05.css">
   </head>
   <body>
 
@@ -352,12 +352,21 @@
               <canvas id="dailyTrendChart"></canvas>
             </div>
           </div>
+          <!-- Spending Insights -->
+          <div class="section-card" id="view-trends-insights">
+            <h2 class="section-title">💡 Spending Insights</h2>
+            <div id="spending-insights-content">
+              <div class="empty-state"><div class="empty-icon">💡</div><p>ยังไม่มีข้อมูล</p></div>
+            </div>
+          </div>
         </section>
 
         <!-- Analytics View -->
         <section class="view" id="view-analytics">
           <div class="section-card">
-            <h2 class="section-title" data-i18n="analytics.expenseTitle">รายจ่ายแยกตามหมวดหมู่</h2>
+            <div class="section-header">
+              <h2 class="section-title" data-i18n="analytics.expenseTitle">รายจ่ายแยกตามหมวดหมู่</h2>
+            </div>
             <div class="category-breakdown" id="category-breakdown">
               <div class="empty-state"><div class="empty-icon">📊</div><p data-i18n="analytics.noData">ยังไม่มีข้อมูล</p></div>
             </div>
@@ -366,6 +375,20 @@
             <h2 class="section-title" data-i18n="analytics.incomeTitle">รายรับแยกตามหมวดหมู่</h2>
             <div class="category-breakdown" id="income-breakdown">
               <div class="empty-state"><div class="empty-icon">💵</div><p data-i18n="analytics.noData">ยังไม่มีข้อมูล</p></div>
+            </div>
+          </div>
+          <!-- Budget button -->
+          <div class="section-card" style="text-align:center;padding:14px;">
+            <button class="btn-submit" id="btn-open-budget" style="max-width:280px;margin:0 auto;">💰 ตั้งค่า Budget รายจ่าย</button>
+          </div>
+          <!-- Recurring section -->
+          <div class="section-card" id="recurring-section">
+            <div class="section-header">
+              <h2 class="section-title">🔄 รายการประจำ</h2>
+              <button class="btn-submit" id="btn-add-recurring" style="padding:8px 14px;font-size:13px;">+ เพิ่มรายการประจำ</button>
+            </div>
+            <div id="recurring-list">
+              <div class="empty-state"><div class="empty-icon">🔄</div><p>ยังไม่มีรายการประจำ</p></div>
             </div>
           </div>
         </section>
@@ -483,6 +506,47 @@
           <!-- Save button -->
           <button class="btn-submit btn-primary" id="btn-save-settings" style="margin-top:8px" data-i18n="settings.save">บันทึกการตั้งค่า</button>
 
+          <!-- Export CSV -->
+          <button class="btn-settings-action" id="btn-export-csv" style="margin-top:4px;">
+            <span>📥 Export CSV</span>
+          </button>
+
+          <!-- Divider -->
+          <div class="settings-divider"></div>
+
+          <!-- Budget Notifications -->
+          <div class="settings-section-title">🔔 แจ้งเตือน Budget</div>
+          <div class="settings-toggle-row">
+            <label for="toggle-budget-notify">เปิด/ปิดการแจ้งเตือน</label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-budget-notify" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div id="budget-notify-sub" style="display:none;">
+            <div class="settings-toggle-row">
+              <label for="toggle-notify-near">แจ้งเตือนใกล้เกิน (80%)</label>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-notify-near" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="settings-toggle-row">
+              <label for="toggle-notify-over">แจ้งเตือนเมื่อเกิน</label>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-notify-over" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="settings-toggle-row">
+              <label>โหมดแจ้งเตือน</label>
+              <div class="radio-group">
+                <label class="radio-label"><input type="radio" name="notify-mode" id="notify-mode-once" value="once" /> ครั้งเดียว/รอบบิล</label>
+                <label class="radio-label"><input type="radio" name="notify-mode" id="notify-mode-always" value="always" /> แจ้งทุกครั้ง</label>
+              </div>
+            </div>
+          </div>
+
           <!-- Divider -->
           <div class="settings-divider"></div>
 
@@ -584,6 +648,65 @@
           <button class="modal-close" id="changelog-close">✕</button>
         </div>
         <div class="changelog-body" id="changelog-body"></div>
+      </div>
+    </div>
+
+    <!-- ======================== -->
+    <!-- Budget Modal            -->
+    <!-- ======================== -->
+    <div class="modal-overlay" id="budget-modal-overlay" role="dialog" aria-modal="true">
+      <div class="modal settings-modal">
+        <div class="modal-header">
+          <h2 class="modal-title">💰 ตั้งค่า Budget รายจ่าย</h2>
+          <button class="modal-close" id="budget-modal-close">✕</button>
+        </div>
+        <div class="settings-body">
+          <p style="font-size:13px;color:var(--text-2);margin-bottom:8px;">ระบุงบประมาณสูงสุดแต่ละหมวดหมู่ ต่อรอบบิล (เว้นว่าง = ไม่จำกัด)</p>
+          <div id="budget-form-rows"></div>
+          <button class="btn-submit" id="btn-save-budget" style="margin-top:12px;">บันทึก Budget</button>
+          <button class="btn-cancel" id="btn-cancel-budget" style="margin-top:6px;width:100%;">ยกเลิก</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================== -->
+    <!-- Recurring Modal         -->
+    <!-- ======================== -->
+    <div class="modal-overlay" id="recurring-modal-overlay" role="dialog" aria-modal="true">
+      <div class="modal settings-modal">
+        <div class="modal-header">
+          <h2 class="modal-title" id="recurring-modal-title">🔄 เพิ่มรายการประจำ</h2>
+          <button class="modal-close" id="recurring-modal-close">✕</button>
+        </div>
+        <form id="recurring-form" autocomplete="off">
+          <input type="hidden" id="recurring-edit-id" value="" />
+          <div class="form-group">
+            <label>รายละเอียด</label>
+            <input type="text" id="recurring-desc" class="form-input" placeholder="เช่น ค่าเช่า" required />
+          </div>
+          <div class="form-group">
+            <label>จำนวนเงิน (฿)</label>
+            <input type="number" id="recurring-amount" class="form-input" placeholder="0.00" min="0" step="0.01" required />
+          </div>
+          <div class="form-group">
+            <label>หมวดหมู่</label>
+            <select id="recurring-category" class="form-input" required></select>
+          </div>
+          <div class="form-group">
+            <label>วันที่ชำระ (1–31)</label>
+            <input type="number" id="recurring-day" class="form-input" placeholder="เช่น 1" min="1" max="31" required />
+          </div>
+          <div class="form-group">
+            <label>จำนวนงวด (เว้นว่าง = ไม่จำกัด)</label>
+            <input type="number" id="recurring-installments" class="form-input" placeholder="ไม่จำกัด" min="1" />
+          </div>
+          <div class="form-group">
+            <label>หมายเหตุ (ไม่บังคับ)</label>
+            <input type="text" id="recurring-note" class="form-input" placeholder="หมายเหตุ" />
+          </div>
+          <button type="submit" class="btn-submit">บันทึก</button>
+          <button type="button" class="btn-cancel" id="btn-cancel-recurring" style="margin-top:6px;width:100%;">ยกเลิก</button>
+        </form>
       </div>
     </div>
 

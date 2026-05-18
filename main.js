@@ -4,7 +4,7 @@ import { t, setLanguage, getLanguage, applyI18n, dateLocale } from './i18n.js';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
-  onSnapshot, getDoc, setDoc, query, orderBy, writeBatch,
+  onSnapshot, getDoc, setDoc, query, orderBy, writeBatch, getDocs,
 } from 'firebase/firestore';
 
 // ========================
@@ -73,6 +73,17 @@ let pendingImageMime     = null;
 let pendingImageStored   = null; // compressed base64 for saving
 let dailyChartInstance = null;
 
+// Budget & notifications state
+let budgets = {};         // { catId: number }
+let budgetSettings = { enabled: true, notifyNear: true, notifyOver: true, nearThreshold: 80, notifyMode: 'always' };
+let budgetAlerted = {};   // { `${catId}_${cycleStart}_{near|over}`: true }
+
+// Recurring state
+let recurringItems = [];
+let recurringShownToday = new Set(); // toast shown this session
+let unsubscribeRecurring = null;
+let editingRecurringId = null;
+
 // Auth & plan state
 let currentUser      = null;
 let userPlan         = 'free'; // 'free' | 'pro'
@@ -83,8 +94,9 @@ let unsubscribeSnap  = null;
 // ========================
 // Firestore Helpers
 // ========================
-const txCol   = () => collection(db, 'users', currentUser.uid, 'transactions');
-const metaRef = () => doc(db, 'users', currentUser.uid); // users/{uid} = 2 segments (valid)
+const txCol        = () => collection(db, 'users', currentUser.uid, 'transactions');
+const metaRef      = () => doc(db, 'users', currentUser.uid);
+const recurringCol = () => collection(db, 'users', currentUser.uid, 'recurring');
 
 // ========================
 // Auth State Driver
@@ -111,7 +123,10 @@ onAuthStateChanged(auth, (user) => {
   } else {
     currentUser = null;
     if (unsubscribeSnap) { unsubscribeSnap(); unsubscribeSnap = null; }
+    if (unsubscribeRecurring) { unsubscribeRecurring(); unsubscribeRecurring = null; }
     transactions = [];
+    recurringItems = [];
+    budgets = {};
     userPlan = 'free';
     // Always hide dev toggle on logout
     const devBtn = document.getElementById('btn-dev-toggle');
@@ -180,6 +195,14 @@ function setupRealtimeListener() {
     hideLoading();
     showToast('⚠️ Firestore error: ' + err.message, 'error', 8000);
   });
+
+  // Setup recurring listener
+  if (unsubscribeRecurring) unsubscribeRecurring();
+  unsubscribeRecurring = onSnapshot(recurringCol(), (snap) => {
+    recurringItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderRecurringList();
+    checkRecurringDue();
+  });
 }
 
 // Pro: delete imageData older than 90 days (passive cleanup on each load)
@@ -213,10 +236,18 @@ async function loadUserMeta() {
       userPlan = DEV_EMAILS.includes(currentUser?.email)
         ? devPlanOverride
         : (data.plan || 'free');
+      // Load budgets
+      budgets = data.budgets || {};
+      // Load budgetSettings
+      budgetSettings = Object.assign(
+        { enabled: true, notifyNear: true, notifyOver: true, nearThreshold: 80, notifyMode: 'always' },
+        data.budgetSettings || {}
+      );
     } else if (DEV_EMAILS.includes(currentUser?.email)) {
       userPlan = devPlanOverride;
     }
     updatePlanUI();
+    syncBudgetSettingsUI();
     if (DEV_EMAILS.includes(currentUser?.email)) updateDevToggleUI();
   } catch (err) {
     console.error('loadUserMeta error:', err);
@@ -787,15 +818,113 @@ function renderDailyChart() {
   });
 }
 
+// ========================
+// Spending Insights
+// ========================
+function renderSpendingInsights() {
+  const container = document.getElementById('spending-insights-content');
+  if (!container) return;
+
+  const { start, end } = getCycleRange();
+  const now = new Date();
+  const cycleTx = transactions.filter(tx => isInCurrentCycle(tx.date));
+  const cycleExpenses = cycleTx.filter(tx => tx.type === 'expense');
+  const cycleIncome   = cycleTx.filter(tx => tx.type === 'income');
+  const totalExpense  = cycleExpenses.reduce((s, tx) => s + Number(tx.amount), 0);
+  const totalIncome   = cycleIncome.reduce((s, tx) => s + Number(tx.amount), 0);
+
+  if (cycleTx.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">💡</div><p>ยังไม่มีข้อมูลในรอบบิลนี้</p></div>`;
+    return;
+  }
+
+  // Days elapsed in current cycle
+  const cycleStart = start;
+  const daysElapsed = Math.max(1, Math.floor((Math.min(now, end) - cycleStart) / 86400000) + 1);
+  const avgDaily = totalExpense / daysElapsed;
+
+  // Top spending category
+  const catTotals = {};
+  cycleExpenses.forEach(tx => { catTotals[tx.category] = (catTotals[tx.category] || 0) + Number(tx.amount); });
+  const topCatEntry = Object.entries(catTotals).sort((a, b) => b[1] - a[1])[0];
+  let topCatHtml = '—';
+  if (topCatEntry) {
+    const cat = getCategoryInfo('expense', topCatEntry[0]);
+    topCatHtml = `${cat.emoji} ${cat.label}: ${formatCurrency(topCatEntry[1])}`;
+  }
+
+  // Savings rate
+  let savingsHtml = 'ไม่มีรายรับ';
+  if (totalIncome > 0) {
+    const rate = ((totalIncome - totalExpense) / totalIncome * 100).toFixed(1);
+    savingsHtml = `${rate}%`;
+  }
+
+  // Budget status
+  const overBudgetCats = Object.entries(budgets).filter(([catId, limit]) => {
+    if (!limit) return false;
+    const spent = catTotals[catId] || 0;
+    return spent >= limit;
+  });
+
+  // Previous cycle comparison
+  const prevEnd = new Date(cycleStart);
+  const prevStart = new Date(cycleStart);
+  prevStart.setMonth(prevStart.getMonth() - 1);
+  const prevExpense = transactions
+    .filter(tx => tx.type === 'expense' && tx.date)
+    .filter(tx => { const d = new Date(tx.date); return d >= prevStart && d < prevEnd; })
+    .reduce((s, tx) => s + Number(tx.amount), 0);
+
+  let comparisonHtml = '';
+  if (prevExpense > 0) {
+    const diff = totalExpense - prevExpense;
+    const pct  = Math.abs(diff / prevExpense * 100).toFixed(1);
+    const cls  = diff < 0 ? 'less' : 'more';
+    const msg  = diff < 0
+      ? `ใช้จ่ายน้อยกว่ารอบที่แล้ว <span class="comparison-value">${pct}%</span>! 🎉`
+      : `ใช้จ่ายมากกว่ารอบที่แล้ว <span class="comparison-value">${pct}%</span>`;
+    comparisonHtml = `<div class="insight-comparison ${cls}">📊 ${msg}</div>`;
+  }
+
+  const budgetStatusHtml = Object.keys(budgets).length > 0
+    ? (overBudgetCats.length > 0
+        ? `<span style="color:var(--red)">${overBudgetCats.length} หมวดเกิน Budget</span>`
+        : `<span style="color:var(--green)">ทุกหมวดอยู่ในงบ ✓</span>`)
+    : 'ยังไม่ได้ตั้ง Budget';
+
+  container.innerHTML = `
+    <div class="insights-grid">
+      <div class="insight-card">
+        <div class="insight-card-label">📅 เฉลี่ยต่อวัน</div>
+        <div class="insight-card-value">${formatCurrency(avgDaily)}</div>
+        <div class="insight-card-sub">(${daysElapsed} วันที่ผ่านมา)</div>
+      </div>
+      <div class="insight-card">
+        <div class="insight-card-label">🏆 หมวดใช้จ่ายสูงสุด</div>
+        <div class="insight-card-value" style="font-size:14px;">${topCatHtml}</div>
+      </div>
+      <div class="insight-card ${totalIncome > 0 ? (totalIncome > totalExpense ? 'positive' : 'negative') : ''}">
+        <div class="insight-card-label">💚 อัตราออม</div>
+        <div class="insight-card-value">${savingsHtml}</div>
+      </div>
+      <div class="insight-card">
+        <div class="insight-card-label">💰 Budget</div>
+        <div class="insight-card-value" style="font-size:13px;">${budgetStatusHtml}</div>
+      </div>
+    </div>
+    ${comparisonHtml}`;
+}
+
 function renderCategoryBreakdown(type, containerId) {
   const container = document.getElementById(containerId);
-  const txList = transactions.filter(t => t.type === type && isInCurrentCycle(t.date));
+  const txList = transactions.filter(tx => tx.type === type && isInCurrentCycle(tx.date));
   if (txList.length === 0) {
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">${type === 'expense' ? '📊' : '💵'}</div><p>${t('analytics.noData')}</p></div>`;
     return;
   }
   const totals = {};
-  txList.forEach(t => { totals[t.category] = (totals[t.category] || 0) + Number(t.amount); });
+  txList.forEach(tx => { totals[tx.category] = (totals[tx.category] || 0) + Number(tx.amount); });
   const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
   const maxVal  = sorted[0][1];
   const colors  = CAT_COLORS[type];
@@ -805,11 +934,28 @@ function renderCategoryBreakdown(type, containerId) {
     const pct = ((amount / maxVal) * 100).toFixed(1);
     const div = document.createElement('div');
     div.className = 'cat-item';
+    const budget = (type === 'expense') ? (budgets[catId] || 0) : 0;
+    let budgetHtml = '';
+    if (budget > 0) {
+      const ratio = amount / budget;
+      const pctBudget = Math.min(ratio * 100, 100).toFixed(1);
+      const cls = ratio >= 1 ? 'over' : ratio >= 0.7 ? 'warn' : 'ok';
+      const overAmt = amount > budget ? amount - budget : 0;
+      budgetHtml = `
+        <div class="budget-progress-wrap">
+          <div class="budget-bar-track"><div class="budget-bar-fill ${cls}" style="width:${pctBudget}%"></div></div>
+          <div class="budget-bar-text">
+            <span>${formatCurrency(amount)} / ${formatCurrency(budget)}</span>
+            ${overAmt > 0 ? `<span class="over-label">เกิน ${formatCurrency(overAmt)}</span>` : ''}
+          </div>
+        </div>`;
+    }
     div.innerHTML = `
       <div class="cat-emoji">${cat.emoji}</div>
       <div class="cat-info">
         <div class="cat-name">${cat.label}</div>
         <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${pct}%;background:${colors[idx % colors.length]};"></div></div>
+        ${budgetHtml}
       </div>
       <div class="cat-amount" style="color:${colors[idx % colors.length]}">${formatCurrency(amount)}</div>`;
     container.appendChild(div);
@@ -822,8 +968,310 @@ function renderCategoryBreakdown(type, containerId) {
 function renderAll() {
   if      (currentView === 'dashboard')    renderDashboard();
   else if (currentView === 'transactions') renderAllTransactions();
-  else if (currentView === 'analytics')    renderAnalytics();
-  else if (currentView === 'trends')       renderDailyChart();
+  else if (currentView === 'analytics')    { renderAnalytics(); renderRecurringList(); }
+  else if (currentView === 'trends')       { renderDailyChart(); renderSpendingInsights(); }
+}
+
+// ========================
+// Budget Modal
+// ========================
+function openBudgetModal() {
+  const container = document.getElementById('budget-form-rows');
+  container.innerHTML = '';
+  CATEGORIES.expense.forEach(cat => {
+    const label = catLabel(cat.id);
+    const val   = budgets[cat.id] || '';
+    const row   = document.createElement('div');
+    row.className = 'budget-row';
+    row.innerHTML = `
+      <div class="budget-row-emoji">${cat.emoji}</div>
+      <div class="budget-row-label">${label}</div>
+      <input type="number" min="0" step="1" placeholder="ไม่จำกัด"
+             data-cat="${cat.id}" value="${val}" />`;
+    container.appendChild(row);
+  });
+  openModal('budget-modal-overlay');
+}
+
+async function saveBudget() {
+  const inputs = document.querySelectorAll('#budget-form-rows input[data-cat]');
+  const newBudgets = {};
+  inputs.forEach(inp => {
+    const val = parseFloat(inp.value);
+    if (inp.value.trim() !== '' && !isNaN(val) && val > 0) {
+      newBudgets[inp.dataset.cat] = val;
+    }
+  });
+  budgets = newBudgets;
+  try {
+    await fsSaveMeta({ budgets: newBudgets });
+    showToast('💰 บันทึก Budget สำเร็จ', 'success');
+    closeModal('budget-modal-overlay');
+    renderAll();
+  } catch (err) {
+    showToast('❌ ' + err.message, 'error');
+  }
+}
+
+// ========================
+// Budget Alert
+// ========================
+function checkBudgetAlert(catId) {
+  if (!budgetSettings.enabled) return;
+  const budget = budgets[catId];
+  if (!budget) return;
+
+  const { start } = getCycleRange();
+  const cycleKey  = start.toISOString().slice(0, 10);
+
+  const spent = transactions
+    .filter(tx => tx.type === 'expense' && tx.category === catId && isInCurrentCycle(tx.date))
+    .reduce((s, tx) => s + Number(tx.amount), 0);
+
+  const cat = getCategoryInfo('expense', catId);
+  const nearKey = `${catId}_${cycleKey}_near`;
+  const overKey = `${catId}_${cycleKey}_over`;
+
+  if (spent >= budget && budgetSettings.notifyOver) {
+    if (budgetSettings.notifyMode === 'once' && budgetAlerted[overKey]) return;
+    budgetAlerted[overKey] = true;
+    showToast(`⚠️ ${cat.emoji}${cat.label} เกิน Budget แล้ว! (${formatCurrency(spent)} / ${formatCurrency(budget)})`, 'error', 5000);
+  } else if (spent >= budget * (budgetSettings.nearThreshold / 100) && budgetSettings.notifyNear) {
+    if (budgetSettings.notifyMode === 'once' && budgetAlerted[nearKey]) return;
+    budgetAlerted[nearKey] = true;
+    showToast(`🔔 ${cat.emoji}${cat.label} ใกล้เกิน Budget (${formatCurrency(spent)} / ${formatCurrency(budget)})`, 'warning', 4000);
+  }
+}
+
+// ========================
+// Budget Notification Settings UI
+// ========================
+function syncBudgetSettingsUI() {
+  const masterEl   = document.getElementById('toggle-budget-notify');
+  const subEl      = document.getElementById('budget-notify-sub');
+  const nearEl     = document.getElementById('toggle-notify-near');
+  const overEl     = document.getElementById('toggle-notify-over');
+  const modeOnce   = document.getElementById('notify-mode-once');
+  const modeAlways = document.getElementById('notify-mode-always');
+  if (!masterEl) return;
+  masterEl.checked = !!budgetSettings.enabled;
+  if (subEl) subEl.style.display = budgetSettings.enabled ? '' : 'none';
+  if (nearEl) nearEl.checked = !!budgetSettings.notifyNear;
+  if (overEl) overEl.checked = !!budgetSettings.notifyOver;
+  if (modeOnce)   modeOnce.checked   = budgetSettings.notifyMode === 'once';
+  if (modeAlways) modeAlways.checked = budgetSettings.notifyMode !== 'once';
+}
+
+async function saveBudgetSettings() {
+  try {
+    await fsSaveMeta({ budgetSettings });
+  } catch (err) {
+    console.error('saveBudgetSettings error:', err);
+  }
+}
+
+// ========================
+// Export CSV
+// ========================
+function exportCSV() {
+  const now = new Date();
+  const days = userPlan === 'pro' ? 365 : 30;
+  const cutoffMs = now.getTime() - days * 86400000;
+  const filtered = transactions.filter(tx => {
+    if (!tx.date) return false;
+    return new Date(tx.date).getTime() >= cutoffMs;
+  }).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const BOM = '﻿';
+  const header = 'วันที่,ประเภท,หมวดหมู่,รายละเอียด,จำนวนเงิน';
+  const rows = filtered.map(tx => {
+    const cat  = getCategoryInfo(tx.type, tx.category);
+    const type = tx.type === 'income' ? 'รายรับ' : 'รายจ่าย';
+    const date = new Date(tx.date).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+    const desc = `"${(tx.description || '').replace(/"/g, '""')}"`;
+    return [date, type, cat.label, desc, tx.amount].join(',');
+  });
+
+  const csv  = BOM + [header, ...rows].join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href     = url;
+  link.download = 'moneyflow_export.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  showToast(`📥 Export สำเร็จ (${filtered.length} รายการ)`, 'success');
+}
+
+// ========================
+// Recurring Transactions
+// ========================
+function populateRecurringCategorySelect() {
+  const select = document.getElementById('recurring-category');
+  if (!select) return;
+  select.innerHTML = '';
+  CATEGORIES.expense.forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat.id;
+    opt.textContent = `${cat.emoji} ${catLabel(cat.id)}`;
+    select.appendChild(opt);
+  });
+}
+
+function openAddRecurringModal() {
+  editingRecurringId = null;
+  document.getElementById('recurring-modal-title').textContent = '🔄 เพิ่มรายการประจำ';
+  document.getElementById('recurring-form').reset();
+  document.getElementById('recurring-edit-id').value = '';
+  populateRecurringCategorySelect();
+  openModal('recurring-modal-overlay');
+}
+
+function openEditRecurringModal(item) {
+  editingRecurringId = item.id;
+  document.getElementById('recurring-modal-title').textContent = '✏️ แก้ไขรายการประจำ';
+  document.getElementById('recurring-edit-id').value = item.id;
+  document.getElementById('recurring-desc').value         = item.description || '';
+  document.getElementById('recurring-amount').value       = item.amount || '';
+  document.getElementById('recurring-day').value          = item.dayOfMonth || '';
+  document.getElementById('recurring-installments').value = item.installments || '';
+  document.getElementById('recurring-note').value         = item.note || '';
+  populateRecurringCategorySelect();
+  setTimeout(() => { document.getElementById('recurring-category').value = item.category; }, 0);
+  openModal('recurring-modal-overlay');
+}
+
+async function handleRecurringFormSubmit(e) {
+  e.preventDefault();
+  const description  = document.getElementById('recurring-desc').value.trim();
+  const amount       = parseFloat(document.getElementById('recurring-amount').value);
+  const category     = document.getElementById('recurring-category').value;
+  const dayOfMonth   = parseInt(document.getElementById('recurring-day').value);
+  const instVal      = document.getElementById('recurring-installments').value.trim();
+  const installments = instVal ? parseInt(instVal) : null;
+  const note         = document.getElementById('recurring-note').value.trim();
+
+  if (!description || !amount || !category || !dayOfMonth) {
+    showToast('กรุณากรอกข้อมูลให้ครบ', 'error'); return;
+  }
+
+  const data = { description, amount, category, type: 'expense', dayOfMonth, installments, note,
+    active: true, paidCount: 0, lastPaidDate: '', createdAt: new Date().toISOString() };
+
+  try {
+    if (editingRecurringId) {
+      const { createdAt, paidCount, lastPaidDate, ...updateData } = data;
+      await updateDoc(doc(recurringCol(), editingRecurringId), updateData);
+      showToast('✅ แก้ไขรายการประจำสำเร็จ', 'success');
+    } else {
+      await addDoc(recurringCol(), data);
+      showToast('✅ เพิ่มรายการประจำสำเร็จ', 'success');
+    }
+    closeModal('recurring-modal-overlay');
+  } catch (err) {
+    showToast('❌ ' + err.message, 'error');
+  }
+}
+
+async function markRecurringPaid(item) {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const dateISO  = today.toISOString().slice(0, 16);
+  try {
+    // Add actual transaction
+    await fsAdd({
+      type: 'expense', amount: item.amount, description: item.description,
+      category: item.category, date: dateISO, createdAt: today.toISOString(), imageData: '',
+    });
+    // Update recurring
+    await updateDoc(doc(recurringCol(), item.id), {
+      paidCount: (item.paidCount || 0) + 1,
+      lastPaidDate: todayStr,
+    });
+    showToast(`✅ บันทึก "${item.description}" สำเร็จ`, 'success');
+  } catch (err) {
+    showToast('❌ ' + err.message, 'error');
+  }
+}
+
+async function deleteRecurring(id) {
+  if (!confirm('ลบรายการประจำนี้?')) return;
+  try {
+    await deleteDoc(doc(recurringCol(), id));
+    showToast('🗑️ ลบรายการประจำสำเร็จ', 'success');
+  } catch (err) {
+    showToast('❌ ' + err.message, 'error');
+  }
+}
+
+function renderRecurringList() {
+  const container = document.getElementById('recurring-list');
+  if (!container) return;
+  if (recurringItems.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🔄</div><p>ยังไม่มีรายการประจำ</p></div>`;
+    return;
+  }
+  container.innerHTML = '';
+  recurringItems.forEach(item => {
+    const cat = getCategoryInfo('expense', item.category);
+    const isDone = item.installments && (item.paidCount || 0) >= item.installments;
+    const today  = new Date();
+    const thisMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    const paidThisMonth = item.lastPaidDate && item.lastPaidDate.startsWith(thisMonth);
+    const remaining = item.installments ? item.installments - (item.paidCount || 0) : null;
+    const remText = remaining !== null ? `${remaining} งวดคงเหลือ` : '∞';
+
+    const div = document.createElement('div');
+    div.className = 'recurring-item';
+    div.innerHTML = `
+      <div class="tx-emoji">${cat.emoji}</div>
+      <div class="recurring-item-info">
+        <div class="recurring-item-title">${escapeHtml(item.description)} ${formatCurrency(item.amount)}</div>
+        <div class="recurring-item-meta">ทุกวันที่ ${item.dayOfMonth} · ${remText}${item.note ? ' · ' + escapeHtml(item.note) : ''}</div>
+      </div>
+      <div class="recurring-item-actions">
+        ${isDone ? `<span class="recurring-done-tag">ครบแล้ว</span>` :
+          paidThisMonth ? `<span class="recurring-done-tag">จ่ายแล้วเดือนนี้</span>` :
+          `<button class="btn-pay-recurring" data-id="${item.id}">✅ จ่ายแล้ว</button>`}
+        <button class="tx-btn tx-btn-edit" data-id="${item.id}" title="แก้ไข">✏️</button>
+        <button class="tx-btn tx-btn-delete" data-id="${item.id}" title="ลบ">🗑️</button>
+      </div>`;
+    container.appendChild(div);
+
+    div.querySelectorAll('.btn-pay-recurring').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const rec = recurringItems.find(r => r.id === btn.dataset.id);
+        if (rec) markRecurringPaid(rec);
+      }));
+    div.querySelectorAll('.tx-btn-edit').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const rec = recurringItems.find(r => r.id === btn.dataset.id);
+        if (rec) openEditRecurringModal(rec);
+      }));
+    div.querySelectorAll('.tx-btn-delete').forEach(btn =>
+      btn.addEventListener('click', () => deleteRecurring(btn.dataset.id)));
+  });
+}
+
+function checkRecurringDue() {
+  const today = new Date();
+  const todayDay = today.getDate();
+  const thisMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  recurringItems.forEach(item => {
+    if (!item.active) return;
+    const isDone = item.installments && (item.paidCount || 0) >= item.installments;
+    if (isDone) return;
+    const paidThisMonth = item.lastPaidDate && item.lastPaidDate.startsWith(thisMonth);
+    if (paidThisMonth) return;
+    if (item.dayOfMonth <= todayDay && !recurringShownToday.has(item.id)) {
+      recurringShownToday.add(item.id);
+      setTimeout(() => {
+        showToast(`🔔 ${item.description} ครบกำหนดชำระวันนี้!`, 'warning', 5000);
+      }, 1000 + recurringShownToday.size * 1500);
+    }
+  });
 }
 
 // ========================
@@ -915,9 +1363,11 @@ async function handleFormSubmit(e) {
       editingId = null;
       showToast(t('toast.editSaved'));
       closeModal('modal-overlay');
+      if (txData.type === 'expense') setTimeout(() => checkBudgetAlert(txData.category), 500);
     } else {
       await fsAdd(txData);
       showToast(t('toast.saved'));
+      if (txData.type === 'expense') setTimeout(() => checkBudgetAlert(txData.category), 500);
       if (isContinue) {
         document.getElementById('input-amount').value = '';
         document.getElementById('input-description').value = '';
@@ -1343,6 +1793,46 @@ function init() {
   // Slip Scan
   document.getElementById('btn-scan').addEventListener('click', () => document.getElementById('input-slip').click());
   document.getElementById('input-slip').addEventListener('change', handleSlipScan);
+
+  // Budget modal
+  document.getElementById('btn-open-budget')?.addEventListener('click', openBudgetModal);
+  document.getElementById('budget-modal-close')?.addEventListener('click', () => closeModal('budget-modal-overlay'));
+  document.getElementById('budget-modal-overlay')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('budget-modal-overlay'); });
+  document.getElementById('btn-save-budget')?.addEventListener('click', saveBudget);
+  document.getElementById('btn-cancel-budget')?.addEventListener('click', () => closeModal('budget-modal-overlay'));
+
+  // Recurring modal
+  document.getElementById('btn-add-recurring')?.addEventListener('click', openAddRecurringModal);
+  document.getElementById('recurring-modal-close')?.addEventListener('click', () => closeModal('recurring-modal-overlay'));
+  document.getElementById('recurring-modal-overlay')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('recurring-modal-overlay'); });
+  document.getElementById('recurring-form')?.addEventListener('submit', handleRecurringFormSubmit);
+  document.getElementById('btn-cancel-recurring')?.addEventListener('click', () => closeModal('recurring-modal-overlay'));
+
+  // Export CSV
+  document.getElementById('btn-export-csv')?.addEventListener('click', exportCSV);
+
+  // Budget notification toggles — auto-save on change
+  const toggleBudgetNotify = document.getElementById('toggle-budget-notify');
+  const budgetNotifySub    = document.getElementById('budget-notify-sub');
+  toggleBudgetNotify?.addEventListener('change', () => {
+    budgetSettings.enabled = toggleBudgetNotify.checked;
+    if (budgetNotifySub) budgetNotifySub.style.display = budgetSettings.enabled ? '' : 'none';
+    saveBudgetSettings();
+  });
+  document.getElementById('toggle-notify-near')?.addEventListener('change', e => {
+    budgetSettings.notifyNear = e.target.checked;
+    saveBudgetSettings();
+  });
+  document.getElementById('toggle-notify-over')?.addEventListener('change', e => {
+    budgetSettings.notifyOver = e.target.checked;
+    saveBudgetSettings();
+  });
+  document.getElementById('notify-mode-once')?.addEventListener('change', e => {
+    if (e.target.checked) { budgetSettings.notifyMode = 'once'; saveBudgetSettings(); }
+  });
+  document.getElementById('notify-mode-always')?.addEventListener('change', e => {
+    if (e.target.checked) { budgetSettings.notifyMode = 'always'; saveBudgetSettings(); }
+  });
 
   // Render from local cache immediately (before Firebase responds)
   if (transactions.length > 0) renderAll();
