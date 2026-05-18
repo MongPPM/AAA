@@ -1026,6 +1026,8 @@ async function handleSlipScan(e) {
     console.error('Scan error:', err);
     showToast(t('toast.scanError', { msg: err.message }), 'error', 6000);
   } finally {
+    // Always reset the file input so selecting the same file again triggers change event
+    document.getElementById('input-slip').value = '';
     setTimeout(() => progressEl.classList.remove('active'), 500);
   }
 }
