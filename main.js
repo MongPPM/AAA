@@ -102,6 +102,7 @@ onAuthStateChanged(auth, (user) => {
     currentUser = user;
     showApp();
     updateUserProfile();
+    updateDevToggleUI(); // always run — hides button for non-dev, shows for dev
     setSyncStatus('syncing');
     if (transactions.length > 0) renderAll();
     loadUserMeta();
@@ -111,6 +112,9 @@ onAuthStateChanged(auth, (user) => {
     if (unsubscribeSnap) { unsubscribeSnap(); unsubscribeSnap = null; }
     transactions = [];
     userPlan = 'free';
+    // Always hide dev toggle on logout
+    const devBtn = document.getElementById('btn-dev-toggle');
+    if (devBtn) devBtn.style.display = 'none';
     showLoginScreen();
   }
 });
