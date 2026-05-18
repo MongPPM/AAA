@@ -1,6 +1,23 @@
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.2.0';
 
 export const CHANGELOG = [
+  {
+    version: '1.2.0',
+    date: '2026-05-18',
+    label: 'Budget · Recurring · Export · Insights',
+    changes: [
+      { type: 'new',     text: 'Budget รายหมวดหมู่ — ตั้งวงเงินแต่ละหมวด เห็น progress bar สี 🟢🟡🔴 แบบ real-time' },
+      { type: 'new',     text: 'แจ้งเตือน Budget — แจ้งเมื่อใกล้เกิน (80%) และเมื่อเกินแล้ว เลือกแจ้งครั้งเดียว/ทุกครั้งได้' },
+      { type: 'new',     text: 'Export CSV — ดาวน์โหลดรายการเป็นไฟล์ CSV (Free 30 วัน / Pro 1 ปี)' },
+      { type: 'new',     text: 'Spending Insights — ค่าใช้จ่ายเฉลี่ยต่อวัน, หมวดที่ใช้มากสุด, savings rate, เทียบรอบที่แล้ว' },
+      { type: 'new',     text: 'รายการประจำ (Recurring) — ตั้งบิลประจำ แจ้งเตือนวันครบกำหนด กดปุ่มเดียวบันทึกว่าจ่ายแล้ว' },
+      { type: 'new',     text: 'ค้นหารายการ — พิมพ์ค้นหาชื่อ/จำนวน/หมวดหมู่ได้ทันที ใช้ได้ทั้ง Free และ Pro' },
+      { type: 'fix',     text: 'แก้สแกนสลิปรูปเดิมซ้ำไม่ได้ — กดสแกนรูปเดิมอีกครั้งใช้งานได้แล้ว' },
+      { type: 'fix',     text: 'แก้ loading overlay ค้างหน้าจอเมื่อเกิด error ระหว่างสแกน' },
+      { type: 'fix',     text: 'แก้ตัวเลขเงินมีทศนิยมผิด เช่น 0.30000000000000004' },
+      { type: 'improve', text: 'Settings modal — ปิดด้วยการกด backdrop ได้แล้ว' },
+    ],
+  },
   {
     version: '1.1.0',
     date: '2026-05-18',
