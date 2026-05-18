@@ -130,9 +130,9 @@
             <button class="mobile-topbar-btn" id="mobile-btn-updates" title="อัปเดต" style="display:none">🆕</button>
             <!-- Mobile: settings button (hidden on desktop) -->
             <button class="mobile-topbar-btn" id="mobile-btn-settings" title="ตั้งค่า">⚙️</button>
-            <button class="btn-add-primary" id="btn-open-modal">
-              <span class="btn-add-icon">+</span>
-              <span class="btn-add-text" data-i18n="topbar.add.text">เพิ่มรายการ</span>
+            <!-- Desktop add button (hidden on mobile) -->
+            <button class="btn-add-primary btn-add-desktop" id="btn-open-modal">
+              <span>+ </span><span data-i18n="topbar.add.text">เพิ่มรายการ</span>
             </button>
           </div>
         </header>
@@ -465,6 +465,9 @@
         <p class="upgrade-note" data-i18n="upgrade.note">ยกเลิกได้ทุกเมื่อ · ชำระผ่านบัตรเครดิต / PromptPay</p>
       </div>
     </div>
+
+    <!-- FAB: mobile add button (hidden on desktop) -->
+    <button class="fab-add" id="mobile-fab" aria-label="เพิ่มรายการ">+</button>
 
     <!-- Bottom Nav (mobile only) -->
     <nav class="bottom-nav" id="bottom-nav">

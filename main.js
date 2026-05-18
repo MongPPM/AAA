@@ -1157,8 +1157,9 @@ function init() {
     }
   });
 
-  // Header buttons
+  // Header buttons (desktop) + FAB (mobile)
   document.getElementById('btn-open-modal').addEventListener('click', openAddModal);
+  document.getElementById('mobile-fab')?.addEventListener('click', openAddModal);
 
   // Type toggle
   document.getElementById('type-income').addEventListener('click',  () => setTransactionType('income'));
