@@ -14,8 +14,8 @@
     <link rel="icon" type="image/png" href="/assets/logo-D-a2ymq_.png" />
     <link rel="apple-touch-icon" href="/assets/logo-D-a2ymq_.png" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script type="module" crossorigin src="/assets/index-BDKC2BTk.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-rcJuXTLl.css">
+    <script type="module" crossorigin src="/assets/index-BT042Mea.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BWNxQTRy.css">
   </head>
   <body>
 
@@ -126,6 +126,8 @@
 
           <div class="top-bar-title" id="page-title" data-i18n="page.dashboard">ภาพรวม</div>
           <div class="top-bar-right">
+            <!-- Current date (desktop) -->
+            <div class="current-date" id="current-date"></div>
             <!-- Mobile: updates button (Free plan only, hidden on desktop) -->
             <button class="mobile-topbar-btn" id="mobile-btn-updates" title="อัปเดต" style="display:none">🆕</button>
             <!-- Mobile: settings button (hidden on desktop) -->
@@ -671,18 +673,6 @@
         <button class="slip-lightbox-close" id="slip-lightbox-close">✕</button>
         <img id="slip-lightbox-img" src="" alt="สลิป" />
       </div>
-    </div>
-
-    <!-- Fixed Swinging Date Sign (always on top, nothing covers it) -->
-    <div class="sign-overlay" id="sign-overlay">
-      <iframe
-        src="/sign.html"
-        scrolling="no"
-        frameborder="0"
-        allowtransparency="true"
-        title="Date Sign"
-        id="sign-frame"
-      ></iframe>
     </div>
 
   </body>

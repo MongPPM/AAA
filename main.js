@@ -502,6 +502,18 @@ function populateFilterCategory() {
 }
 
 // ========================
+// ========================
+// Current Date in Top Bar
+// ========================
+function updateCurrentDate() {
+  const el = document.getElementById('current-date');
+  if (!el) return;
+  el.textContent = new Date().toLocaleDateString(dateLocale(), {
+    weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+  });
+}
+
+// ========================
 // Render Dashboard
 // ========================
 function renderDashboard() {
@@ -1813,6 +1825,7 @@ function openChangelog() {
 function init() {
   // Apply translations first (uses saved/detected language)
   applyI18n();
+  updateCurrentDate();
 
   populateCategorySelect('income');
   populateFilterCategory();
@@ -1929,6 +1942,7 @@ function init() {
       populateCategorySelect(currentType);
       populateFilterCategory();
       setSyncStatus(document.getElementById('sync-badge').className.replace('sync-badge ', '').trim() || 'offline');
+      updateCurrentDate();
     }
     // Save cutoff day
     cutoffDay = day;

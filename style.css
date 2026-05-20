@@ -350,27 +350,12 @@ a { color: var(--indigo); text-decoration: none; }
 /* ========================
    Sign Overlay — fixed floating sign (top layer, nothing covers it)
    ======================== */
-/* Sign scaled to 30% — container clips to visual size,
-   iframe renders full-size then CSS-scales down */
-.sign-overlay {
-  position: fixed;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 9999;
-  width: 90px;   /* 300px × 0.3 */
-  height: 69px;  /* 230px × 0.3 */
-  overflow: hidden;
-  pointer-events: auto;
-}
-.sign-overlay iframe {
-  display: block;
-  width: 300px;
-  height: 230px;
-  border: none;
-  background: transparent;
-  transform: scale(0.3);
-  transform-origin: top left;
+/* Current date in top bar */
+.current-date {
+  font-size: 13px;
+  color: var(--text-2);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 /* ========================
@@ -1290,6 +1275,7 @@ a { color: var(--indigo); text-decoration: none; }
   .menu-toggle { display: flex; }
   .top-bar { padding: 10px 14px; gap: 10px; }
   .top-bar-title { font-size: 15px; }
+  .current-date { display: none; }
   .view { padding: 12px; gap: 12px; }
 
   /* Cards */
