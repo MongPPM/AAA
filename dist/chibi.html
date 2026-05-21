@@ -34,17 +34,17 @@
   const canvas = document.getElementById('gameCanvas');
   const ctx    = canvas.getContext('2d');
 
-  // Virtual resolution
-  const V_WIDTH  = 800;
-  const V_HEIGHT = 460;
+  // Virtual resolution — 800/1.5 × 460/1.5 = 150% zoom
+  const V_WIDTH  = 533;
+  const V_HEIGHT = 307;
 
   /* ── State ── */
   const state = {
     hp: 100,
     duck: {
-      x: 400,
-      y: 330,
-      targetX: 400,
+      x: 267,
+      y: 220,
+      targetX: 267,
       vx: 0,
       vy: 0,
       w: 60,
@@ -212,13 +212,13 @@
     ctx.strokeStyle = '#fda4af';
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.moveTo(0, 120); ctx.lineTo(V_WIDTH, 120);
-    ctx.moveTo(0, 148); ctx.lineTo(V_WIDTH, 148);
+    ctx.moveTo(0,  80); ctx.lineTo(V_WIDTH,  80);
+    ctx.moveTo(0,  99); ctx.lineTo(V_WIDTH,  99);
     ctx.stroke();
 
     ctx.fillStyle = '#fbcfe8';
     ctx.beginPath();
-    ctx.ellipse(400, 368, 280, 45, 0, 0, Math.PI * 2);
+    ctx.ellipse(267, 245, 187, 30, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#f472b6'; ctx.lineWidth = 3;
     ctx.stroke();
@@ -472,11 +472,11 @@
     state.frame++;
     const d = state.duck;
     if (d.isKO) {
-      d.vx = 0; d.vy = 0; d.y = 334;
+      d.vx = 0; d.vy = 0; d.y = 223;
     } else {
       d.vx *= 0.88;
       d.x  += d.vx;
-      d.x   = Math.max(150, Math.min(V_WIDTH-150, d.x));
+      d.x   = Math.max(100, Math.min(V_WIDTH-100, d.x));
       d.x  += (d.targetX - d.x) * 0.12;
     }
     spawnParticles();
