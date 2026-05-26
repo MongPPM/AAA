@@ -59,10 +59,23 @@ a { color: var(--indigo); text-decoration: none; }
    ======================== */
 .bg-orbs { display: none; }
 
+/* Auto-fit root container — บังคับไม่ให้อะไรล้นจอที่ JS วัดได้ */
+html, body {
+  width:     var(--app-vw, 100%);
+  max-width: var(--app-vw, 100vw);
+  overflow-x: hidden;
+}
+body { min-height: var(--app-vh, 100vh); }
+
 .app-wrapper {
   display: flex;
-  min-height: 100vh;
+  min-height: var(--app-vh, 100vh);
+  max-width: var(--app-vw, 100vw);
+  overflow-x: hidden;
 }
+.main-content { max-width: 100%; min-width: 0; overflow-x: hidden; }
+.view         { max-width: 100%; min-width: 0; }
+.section-card { max-width: 100%; min-width: 0; overflow-x: hidden; }
 
 /* ========================
    Sidebar
@@ -1482,8 +1495,10 @@ a { color: var(--indigo); text-decoration: none; }
   .modal {
     position: absolute;
     inset: 0;                        /* top:0 right:0 bottom:0 left:0 */
-    width: 100%; max-width: 100%;
-    height: 100%; max-height: 100%;
+    width:      var(--app-vw, 100%);
+    max-width:  var(--app-vw, 100%);
+    height:     var(--app-vh, 100%);
+    max-height: var(--app-vh, 100%);
     margin: 0;
     border: none;
     border-radius: 0;

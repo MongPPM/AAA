@@ -2143,10 +2143,34 @@ function openChangelog() {
   closeModal('settings-modal-overlay');
 }
 
+// ========================
+// Auto-fit Viewport (real-pixel measurement)
+// ========================
+// Browser ที่บอกขนาดผิด/มี address bar เลื่อนได้/มี notch
+// แก้โดยวัดขนาดจริงด้วย JS แล้ว set CSS variable ให้ใช้
+function syncViewportSize() {
+  const vv = window.visualViewport;
+  const w = vv?.width  ?? window.innerWidth  ?? document.documentElement.clientWidth;
+  const h = vv?.height ?? window.innerHeight ?? document.documentElement.clientHeight;
+  const root = document.documentElement;
+  root.style.setProperty('--app-vw', w + 'px');
+  root.style.setProperty('--app-vh', h + 'px');
+  // breakpoint helper class — ให้ CSS / JS รู้ทันทีว่ามือถือ
+  root.classList.toggle('viewport-mobile', w <= 900);
+  root.classList.toggle('viewport-tablet', w > 900 && w <= 1280);
+  root.classList.toggle('viewport-desktop', w > 1280);
+}
+syncViewportSize();
+window.addEventListener('resize',            syncViewportSize, { passive: true });
+window.addEventListener('orientationchange', syncViewportSize, { passive: true });
+window.visualViewport?.addEventListener('resize', syncViewportSize, { passive: true });
+window.visualViewport?.addEventListener('scroll', syncViewportSize, { passive: true });
+
 function init() {
   // Apply translations first (uses saved/detected language)
   applyI18n();
   updateCurrentDate();
+  syncViewportSize();  // วัดอีกครั้งตอน DOM พร้อม
 
   populateCategorySelect('income');
   populateFilterCategory();
