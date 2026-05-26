@@ -1735,13 +1735,15 @@ const bgScan = {
 
 function openBatchScanModal() {
   closeModal('modal-overlay');  // close the single-tx modal if open
-  document.getElementById('batch-scan-modal-overlay').classList.add('active');
+  document.getElementById('batch-scan-modal-overlay').classList.add('open');
   batchPickedFiles = [];
   renderBatchPickedList();
+  // เปิด file picker ทันที — ไม่ต้องคลิก "เลือกรูป" ก่อน
+  setTimeout(() => document.getElementById('batch-scan-input').click(), 150);
 }
 
 function closeBatchScanModal() {
-  document.getElementById('batch-scan-modal-overlay').classList.remove('active');
+  document.getElementById('batch-scan-modal-overlay').classList.remove('open');
   batchPickedFiles = [];
   document.getElementById('batch-scan-input').value = '';
 }
