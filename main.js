@@ -96,11 +96,6 @@ let scanCount        = 0;
 let scanDate         = ''; // YYYY-MM-DD daily tracking
 let unsubscribeSnap  = null;
 
-// Scan rate-limiting (กันสแกนรัวๆ)
-const SCAN_COOLDOWN_MS = 10_000;  // 10 วินาทีระหว่างแต่ละครั้ง
-let lastScanAt         = 0;
-let scanInFlight       = false;
-
 // ========================
 // Firestore Helpers
 // ========================
@@ -1645,23 +1640,6 @@ async function handleSlipScan(e) {
   const file = e.target.files[0];
   if (!file) return;
 
-  // Guard 1: กันคลิกซ้ำระหว่างกำลังประมวลผล (double-submit)
-  if (scanInFlight) {
-    document.getElementById('input-slip').value = '';
-    return;
-  }
-
-  // Guard 2: cooldown 10 วินาทีระหว่างแต่ละครั้ง (กันเพิ่มรายการรัวๆ)
-  const elapsed = Date.now() - lastScanAt;
-  if (lastScanAt > 0 && elapsed < SCAN_COOLDOWN_MS) {
-    const remain = Math.ceil((SCAN_COOLDOWN_MS - elapsed) / 1000);
-    showToast(`โปรดรอ ${remain} วินาทีก่อนสแกนสลิปใบถัดไป ⏳`, 'error');
-    document.getElementById('input-slip').value = '';
-    return;
-  }
-
-  scanInFlight = true;
-
   const progressEl = document.getElementById('scan-progress');
   const barEl      = progressEl.querySelector('.progress-bar');
   const textEl     = progressEl.querySelector('.progress-text');
@@ -1678,9 +1656,6 @@ async function handleSlipScan(e) {
       document.getElementById('input-slip').value = '';
       return;
     }
-
-    // ติด cooldown ตั้งแต่ตอนนี้ — ผ่าน quota แล้ว เริ่มเรียก AI จริง
-    lastScanAt = Date.now();
 
     const base64Data = await fileToBase64(file);
     const mimeType   = file.type || 'image/jpeg';
@@ -1729,7 +1704,6 @@ async function handleSlipScan(e) {
     // Always reset the file input so selecting the same file again triggers change event
     document.getElementById('input-slip').value = '';
     setTimeout(() => progressEl.classList.remove('active'), 500);
-    scanInFlight = false;
   }
 }
 
