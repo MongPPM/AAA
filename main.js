@@ -1828,10 +1828,10 @@ async function startBatchScan() {
 
   bgScan.jobs = [
     ...toScan.map((f, i) => ({
-      id: `job_${stamp}_${i}`, file: f, status: 'pending', result: null, error: null,
+      id: `job_${stamp}_${i}`, file: f, status: 'pending', result: null, error: null, attempts: 0,
     })),
     ...skipped.map((f, i) => ({
-      id: `job_skip_${stamp}_${i}`, file: f, status: 'error', result: null, error: 'หมดโควต้าวันนี้',
+      id: `job_skip_${stamp}_${i}`, file: f, status: 'error', result: null, error: 'หมดโควต้าวันนี้', attempts: 0,
     })),
   ];
   bgScan.isActive  = true;
@@ -1858,59 +1858,102 @@ function processBgQueue() {
   updateBgScanPopup();
 }
 
+const BATCH_MAX_RETRIES = 2; // total auto-retry attempts หลังจาก fail (รวม initial = 3 calls สูงสุด)
+
+// แปลง datetime string จาก AI ให้เป็น ISO ที่บันทึก
+// รับได้ทั้ง "2026-05-23T14:30" และ "2026-05-23 14:30" / fallback กลับ now
+function parseSlipDatetime(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  const cleaned = raw.trim().replace(' ', 'T');
+  const d = new Date(cleaned);
+  if (isNaN(d.getTime())) return null;
+  // กัน AI ส่ง datetime อนาคต (ผิดแน่ๆ — สลิปเป็นอดีต) หรือ <2000
+  const now = Date.now();
+  const ts = d.getTime();
+  if (ts > now + 86400000 || ts < new Date('2000-01-01').getTime()) return null;
+  return d.toISOString();
+}
+
 async function processBgJob(job) {
-  try {
-    const base64Data = await fileToBase64(job.file);
-    const mimeType   = job.file.type || 'image/jpeg';
+  let lastError = null;
+  let scanResult = null;
 
-    const scanRes = await fetch('/api/scan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ base64Data, mimeType }),
-    });
-    if (!scanRes.ok) {
-      const errData = await scanRes.json().catch(() => ({}));
-      throw new Error(errData.error || `Server Error ${scanRes.status}`);
-    }
-    const data = await scanRes.json();
-    if (!data.amount) throw new Error('AI อ่านยอดไม่ได้');
-
-    // Optional: compress + store image for Pro users
-    let imageData = '';
-    if (userPlan === 'pro') {
-      try {
-        imageData = await compressImage(base64Data, mimeType, 1200, 0.82);
-      } catch { /* ignore compression error */ }
-    }
-
-    const tx = {
-      type:        'expense',
-      amount:      parseFloat(data.amount),
-      description: data.description || 'รายการจากสลิป',
-      category:    'other_ex',
-      date:        new Date().toISOString(),
-      createdAt:   new Date().toISOString(),
-      imageData,
-    };
-    await fsAdd(tx);
-
-    job.status = 'done';
-    job.result = tx;
-  } catch (err) {
-    job.status = 'error';
-    job.error  = err.message || String(err);
-  } finally {
-    bgScan.completed++;
-    if (job.status === 'done') bgScan.succeeded++;
-    else                       bgScan.failed++;
+  // Try up to (1 + BATCH_MAX_RETRIES) times. โควต้าใช้แค่ 1 (จองไว้ตอน startBatchScan แล้ว)
+  for (let attempt = 0; attempt <= BATCH_MAX_RETRIES; attempt++) {
+    job.attempts = attempt + 1;
     updateBgScanPopup();
+    try {
+      const base64Data = await fileToBase64(job.file);
+      const mimeType   = job.file.type || 'image/jpeg';
 
-    if (bgScan.completed < bgScan.total) {
-      processBgQueue();
-    } else {
-      bgScan.isActive = false;
-      updateBgScanPopup();
+      const scanRes = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64Data, mimeType }),
+      });
+      if (!scanRes.ok) {
+        const errData = await scanRes.json().catch(() => ({}));
+        throw new Error(errData.error || `Server Error ${scanRes.status}`);
+      }
+      const data = await scanRes.json();
+      if (!data.amount) throw new Error('AI อ่านยอดไม่ได้');
+      scanResult = { data, base64Data, mimeType };
+      break;  // success — exit retry loop
+    } catch (err) {
+      lastError = err;
+      // ถ้ายังไม่ครบ retry → รอสั้นๆ แล้วลองใหม่
+      if (attempt < BATCH_MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, 800));
+      }
     }
+  }
+
+  if (!scanResult) {
+    job.status = 'error';
+    job.error  = `${lastError?.message || 'สแกนล้มเหลว'} (ลอง ${job.attempts} ครั้ง)`;
+  } else {
+    try {
+      const { data, base64Data, mimeType } = scanResult;
+
+      // Pro: เก็บรูปแบบบีบอัด
+      let imageData = '';
+      if (userPlan === 'pro') {
+        try {
+          imageData = await compressImage(base64Data, mimeType, 1200, 0.82);
+        } catch { /* ignore compression error */ }
+      }
+
+      // ใช้วันที่+เวลาจากสลิป — fallback เป็นเวลาปัจจุบันถ้า AI ไม่ส่งมา
+      const slipDate = parseSlipDatetime(data.datetime) || new Date().toISOString();
+
+      const tx = {
+        type:        'expense',
+        amount:      parseFloat(data.amount),
+        description: data.description || 'รายการจากสลิป',
+        category:    'other_ex',
+        date:        slipDate,
+        createdAt:   new Date().toISOString(),
+        imageData,
+      };
+      await fsAdd(tx);
+      job.status = 'done';
+      job.result = tx;
+    } catch (err) {
+      job.status = 'error';
+      job.error  = err.message || String(err);
+    }
+  }
+
+  bgScan.completed++;
+  if (job.status === 'done') bgScan.succeeded++;
+  else                       bgScan.failed++;
+  updateBgScanPopup();
+
+  if (bgScan.completed < bgScan.total) {
+    processBgQueue();
+  } else {
+    bgScan.isActive = false;
+    updateBgScanPopup();
   }
 }
 
@@ -1945,7 +1988,7 @@ function updateBgScanPopup() {
     listEl.innerHTML = bgScan.jobs.map(j => {
       const icon = j.status === 'done'     ? '✓'
                  : j.status === 'error'    ? '✕'
-                 : j.status === 'scanning' ? '⏳'
+                 : j.status === 'scanning' ? (j.attempts > 1 ? `🔁${j.attempts}` : '⏳')
                  :                           '⋯';
       const detail = j.status === 'done'  ? `฿${j.result?.amount?.toFixed(2) ?? ''}`
                    : j.status === 'error' ? (j.error || 'ผิดพลาด')

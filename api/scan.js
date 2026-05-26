@@ -16,7 +16,7 @@ export default async function handler(req, res) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [
-          { text: 'Extract transaction details from this Thai bank slip image. Return ONLY JSON: {"amount": 123.45, "description": "recipient name"}. If no amount found return {"amount": null, "description": ""}. Focus on the total transfer amount.' },
+          { text: 'Extract transaction details from this Thai bank slip image. Return ONLY JSON: {"amount": 123.45, "description": "recipient name", "datetime": "YYYY-MM-DDTHH:mm"}. Rules: (1) amount = total transfer amount as number. (2) description = recipient name or merchant (short). (3) datetime = transaction date+time printed on slip in ISO 8601 local-time format (no timezone suffix). If year shown is Thai Buddhist Era (BE, e.g. 2568) subtract 543 to get CE (2025). If date/time not visible return null for datetime. If no amount found return {"amount": null, "description": "", "datetime": null}.' },
           { inline_data: { mime_type: mimeType || 'image/jpeg', data: base64Data } }
         ]}]
       })
