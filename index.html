@@ -313,6 +313,10 @@
             <span class="scan-icon">📸</span>
             <span data-i18n="modal.scan"> สแกนสลิป / แนบรูปภาพ</span>
           </button>
+          <button type="button" class="btn-scan-batch" id="btn-scan-batch">
+            <span>📸📸</span>
+            <span> สแกนหลายใบพร้อมกัน (auto-save)</span>
+          </button>
           <div class="scan-info-row" id="scan-info"></div>
           <input type="file" id="input-slip" accept="image/*" style="display:none;" />
           <div id="scan-progress" class="scan-progress">
@@ -671,6 +675,53 @@
       <div class="slip-lightbox-content">
         <button class="slip-lightbox-close" id="slip-lightbox-close">✕</button>
         <img id="slip-lightbox-img" src="" alt="สลิป" />
+      </div>
+    </div>
+
+    <!-- ======================== -->
+    <!-- Batch Scan Modal         -->
+    <!-- ======================== -->
+    <div class="modal-overlay" id="batch-scan-modal-overlay" role="dialog" aria-modal="true">
+      <div class="modal modal-sm">
+        <div class="modal-header">
+          <h2 class="modal-title">📸📸 สแกนสลิปหลายใบ</h2>
+          <button class="modal-close" id="batch-scan-modal-close">✕</button>
+        </div>
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:12px;line-height:1.5;">
+          เลือกได้สูงสุด <strong>10 ใบ</strong> ต่อครั้ง · AI จะอ่านยอดและรายละเอียดให้
+          · บันทึกเป็น <strong>"รายจ่าย"</strong> หมวด "อื่นๆ" (แก้ทีหลังจากรายการได้)
+        </p>
+        <input type="file" id="batch-scan-input" accept="image/*" multiple style="display:none;" />
+        <button type="button" class="btn-submit" id="batch-scan-pick" style="margin-bottom:10px;">
+          📁 เลือกรูปสลิป
+        </button>
+        <div id="batch-scan-file-list" class="batch-scan-file-list"></div>
+        <div id="batch-scan-summary" style="font-size:13px;color:var(--text-2);margin:8px 0;display:none;">
+          เลือกแล้ว <strong id="batch-scan-count">0</strong> ใบ
+        </div>
+        <button type="button" class="btn-submit btn-primary" id="batch-scan-start" disabled style="margin-top:8px;">
+          🚀 เริ่มสแกนเบื้องหลัง
+        </button>
+        <button type="button" class="btn-cancel" id="batch-scan-cancel" style="margin-top:6px;width:100%;">ยกเลิก</button>
+      </div>
+    </div>
+
+    <!-- ======================== -->
+    <!-- Background Scan Popup    -->
+    <!-- ======================== -->
+    <div class="bg-scan-popup" id="bg-scan-popup" role="status" aria-live="polite">
+      <div class="bg-scan-header">
+        <span class="bg-scan-title" id="bg-scan-title">🔄 สแกนสลิป 0/0</span>
+        <button class="bg-scan-toggle" id="bg-scan-toggle" title="ขยาย/ย่อ">▾</button>
+        <button class="bg-scan-close" id="bg-scan-close" title="ปิด">✕</button>
+      </div>
+      <div class="bg-scan-progress">
+        <div class="bg-scan-progress-bar" id="bg-scan-progress-bar"></div>
+      </div>
+      <div class="bg-scan-stats" id="bg-scan-stats">✓ 0  ✕ 0  ⏳ 0</div>
+      <div class="bg-scan-list" id="bg-scan-list" hidden></div>
+      <div class="bg-scan-actions" id="bg-scan-actions" hidden>
+        <button class="link-btn" id="bg-scan-view-list">ดูรายการ →</button>
       </div>
     </div>
 

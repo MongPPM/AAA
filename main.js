@@ -1717,6 +1717,271 @@ function fileToBase64(file) {
 }
 
 // ========================
+// Batch Scan (Background, parallel)
+// ========================
+const BATCH_MAX_FILES   = 10;
+const BATCH_CONCURRENCY = 3;
+
+let batchPickedFiles = [];   // files chosen in modal before "Start"
+const bgScan = {
+  jobs: [],          // [{ id, file, status, result, error }]
+  isActive: false,
+  total:     0,
+  completed: 0,
+  succeeded: 0,
+  failed:    0,
+  expanded:  false,
+};
+
+function openBatchScanModal() {
+  closeModal('modal-overlay');  // close the single-tx modal if open
+  document.getElementById('batch-scan-modal-overlay').classList.add('active');
+  batchPickedFiles = [];
+  renderBatchPickedList();
+}
+
+function closeBatchScanModal() {
+  document.getElementById('batch-scan-modal-overlay').classList.remove('active');
+  batchPickedFiles = [];
+  document.getElementById('batch-scan-input').value = '';
+}
+
+function handleBatchFilePick(e) {
+  const newFiles = Array.from(e.target.files || []);
+  e.target.value = '';  // reset so picking same files again works
+  if (newFiles.length === 0) return;
+
+  const combined = [...batchPickedFiles, ...newFiles];
+  if (combined.length > BATCH_MAX_FILES) {
+    showToast(`เลือกได้สูงสุด ${BATCH_MAX_FILES} ใบต่อครั้ง`, 'error');
+    batchPickedFiles = combined.slice(0, BATCH_MAX_FILES);
+  } else {
+    batchPickedFiles = combined;
+  }
+  renderBatchPickedList();
+}
+
+function renderBatchPickedList() {
+  const listEl     = document.getElementById('batch-scan-file-list');
+  const summaryEl  = document.getElementById('batch-scan-summary');
+  const countEl    = document.getElementById('batch-scan-count');
+  const startBtn   = document.getElementById('batch-scan-start');
+
+  if (batchPickedFiles.length === 0) {
+    listEl.innerHTML  = '';
+    summaryEl.style.display = 'none';
+    startBtn.disabled = true;
+    return;
+  }
+  summaryEl.style.display = '';
+  countEl.textContent = batchPickedFiles.length;
+  startBtn.disabled = false;
+
+  listEl.innerHTML = batchPickedFiles.map((f, i) => `
+    <div class="batch-file-item">
+      <span class="batch-file-item-name">${escapeHtml(f.name)}</span>
+      <span class="batch-file-item-size">${(f.size / 1024).toFixed(0)} KB</span>
+      <button class="batch-file-item-remove" data-idx="${i}" title="ลบออก">✕</button>
+    </div>
+  `).join('');
+  listEl.querySelectorAll('.batch-file-item-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      batchPickedFiles.splice(+btn.dataset.idx, 1);
+      renderBatchPickedList();
+    });
+  });
+}
+
+async function startBatchScan() {
+  if (batchPickedFiles.length === 0) return;
+
+  // ── Reserve quota up front (Free plan) so parallel scans don't race ──
+  let allowedCount = batchPickedFiles.length;
+  if (userPlan !== 'pro') {
+    const today    = new Date().toLocaleDateString('sv');
+    const snap     = await getDoc(metaRef());
+    const meta     = snap.exists() ? snap.data() : {};
+    const sameDay  = meta.scan_date === today;
+    const used     = sameDay ? (meta.scan_count || 0) : 0;
+    const remaining = FREE_SCAN_LIMIT - used;
+
+    if (remaining <= 0) {
+      openUpgradeModal(t('scan.limit.upgrade', { total: FREE_SCAN_LIMIT }));
+      return;
+    }
+    allowedCount = Math.min(batchPickedFiles.length, remaining);
+    if (allowedCount < batchPickedFiles.length) {
+      showToast(`โควต้าเหลือ ${remaining} ใบ จะสแกนแค่ ${allowedCount} ใบแรก`, 'error', 4000);
+    }
+    const newCount = used + allowedCount;
+    await fsSaveMeta({ scan_count: newCount, scan_date: today });
+    scanCount = newCount;
+    scanDate  = today;
+    updatePlanUI();
+  }
+
+  const toScan   = batchPickedFiles.slice(0, allowedCount);
+  const skipped  = batchPickedFiles.slice(allowedCount);
+  const stamp    = Date.now();
+
+  bgScan.jobs = [
+    ...toScan.map((f, i) => ({
+      id: `job_${stamp}_${i}`, file: f, status: 'pending', result: null, error: null,
+    })),
+    ...skipped.map((f, i) => ({
+      id: `job_skip_${stamp}_${i}`, file: f, status: 'error', result: null, error: 'หมดโควต้าวันนี้',
+    })),
+  ];
+  bgScan.isActive  = true;
+  bgScan.total     = bgScan.jobs.length;
+  bgScan.completed = skipped.length;
+  bgScan.succeeded = 0;
+  bgScan.failed    = skipped.length;
+
+  closeBatchScanModal();
+  showBgScanPopup();
+  processBgQueue();
+}
+
+function processBgQueue() {
+  const scanning = bgScan.jobs.filter(j => j.status === 'scanning').length;
+  const pending  = bgScan.jobs.filter(j => j.status === 'pending');
+  const slots    = BATCH_CONCURRENCY - scanning;
+
+  for (let i = 0; i < slots && i < pending.length; i++) {
+    const job = pending[i];
+    job.status = 'scanning';
+    processBgJob(job);  // fire-and-forget
+  }
+  updateBgScanPopup();
+}
+
+async function processBgJob(job) {
+  try {
+    const base64Data = await fileToBase64(job.file);
+    const mimeType   = job.file.type || 'image/jpeg';
+
+    const scanRes = await fetch('/api/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base64Data, mimeType }),
+    });
+    if (!scanRes.ok) {
+      const errData = await scanRes.json().catch(() => ({}));
+      throw new Error(errData.error || `Server Error ${scanRes.status}`);
+    }
+    const data = await scanRes.json();
+    if (!data.amount) throw new Error('AI อ่านยอดไม่ได้');
+
+    // Optional: compress + store image for Pro users
+    let imageData = '';
+    if (userPlan === 'pro') {
+      try {
+        imageData = await compressImage(base64Data, mimeType, 1200, 0.82);
+      } catch { /* ignore compression error */ }
+    }
+
+    const tx = {
+      type:        'expense',
+      amount:      parseFloat(data.amount),
+      description: data.description || 'รายการจากสลิป',
+      category:    'other_ex',
+      date:        new Date().toISOString(),
+      createdAt:   new Date().toISOString(),
+      imageData,
+    };
+    await fsAdd(tx);
+
+    job.status = 'done';
+    job.result = tx;
+  } catch (err) {
+    job.status = 'error';
+    job.error  = err.message || String(err);
+  } finally {
+    bgScan.completed++;
+    if (job.status === 'done') bgScan.succeeded++;
+    else                       bgScan.failed++;
+    updateBgScanPopup();
+
+    if (bgScan.completed < bgScan.total) {
+      processBgQueue();
+    } else {
+      bgScan.isActive = false;
+      updateBgScanPopup();
+    }
+  }
+}
+
+function showBgScanPopup() {
+  document.getElementById('bg-scan-popup').classList.add('active');
+  updateBgScanPopup();
+}
+
+function updateBgScanPopup() {
+  const titleEl   = document.getElementById('bg-scan-title');
+  const barEl     = document.getElementById('bg-scan-progress-bar');
+  const statsEl   = document.getElementById('bg-scan-stats');
+  const actionsEl = document.getElementById('bg-scan-actions');
+  const listEl    = document.getElementById('bg-scan-list');
+
+  if (bgScan.isActive) {
+    titleEl.textContent = `🔄 สแกนสลิป ${bgScan.completed}/${bgScan.total}`;
+    actionsEl.hidden = true;
+  } else {
+    titleEl.textContent = `✅ เสร็จ! เพิ่ม ${bgScan.succeeded} รายการ${bgScan.failed ? ` (ล้มเหลว ${bgScan.failed})` : ''}`;
+    actionsEl.hidden = false;
+  }
+
+  const pending = bgScan.total - bgScan.completed;
+  statsEl.textContent = `✓ ${bgScan.succeeded}  ✕ ${bgScan.failed}  ⏳ ${pending}`;
+
+  const pct = bgScan.total > 0 ? (bgScan.completed / bgScan.total) * 100 : 0;
+  barEl.style.width = pct + '%';
+
+  if (bgScan.expanded) {
+    listEl.hidden = false;
+    listEl.innerHTML = bgScan.jobs.map(j => {
+      const icon = j.status === 'done'     ? '✓'
+                 : j.status === 'error'    ? '✕'
+                 : j.status === 'scanning' ? '⏳'
+                 :                           '⋯';
+      const detail = j.status === 'done'  ? `฿${j.result?.amount?.toFixed(2) ?? ''}`
+                   : j.status === 'error' ? (j.error || 'ผิดพลาด')
+                   :                        j.file.name;
+      return `<div class="bg-scan-list-item">
+        <span class="status-icon">${icon}</span>
+        <span class="file-name">${escapeHtml(j.file.name)}</span>
+        <span style="color:var(--text-2);font-size:11px;">${escapeHtml(detail)}</span>
+      </div>`;
+    }).join('');
+  } else {
+    listEl.hidden = true;
+  }
+}
+
+function toggleBgScanList() {
+  bgScan.expanded = !bgScan.expanded;
+  document.getElementById('bg-scan-toggle').textContent = bgScan.expanded ? '▴' : '▾';
+  updateBgScanPopup();
+}
+
+function dismissBgScanPopup() {
+  if (bgScan.isActive) {
+    // Don't dismiss while still scanning — just collapse
+    showToast('ยังสแกนไม่เสร็จ — รอให้เสร็จก่อนปิด', 'error');
+    return;
+  }
+  document.getElementById('bg-scan-popup').classList.remove('active');
+  bgScan.jobs      = [];
+  bgScan.total     = 0;
+  bgScan.completed = 0;
+  bgScan.succeeded = 0;
+  bgScan.failed    = 0;
+  bgScan.expanded  = false;
+  document.getElementById('bg-scan-toggle').textContent = '▾';
+}
+
+// ========================
 // Dev Plan Toggle
 // ========================
 function updateDevToggleUI() {
@@ -2002,6 +2267,25 @@ function init() {
   // Slip Scan
   document.getElementById('btn-scan').addEventListener('click', () => document.getElementById('input-slip').click());
   document.getElementById('input-slip').addEventListener('change', handleSlipScan);
+
+  // Batch Scan (Background)
+  document.getElementById('btn-scan-batch')?.addEventListener('click', openBatchScanModal);
+  document.getElementById('batch-scan-modal-close')?.addEventListener('click', closeBatchScanModal);
+  document.getElementById('batch-scan-cancel')?.addEventListener('click', closeBatchScanModal);
+  document.getElementById('batch-scan-modal-overlay')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeBatchScanModal();
+  });
+  document.getElementById('batch-scan-pick')?.addEventListener('click', () => document.getElementById('batch-scan-input').click());
+  document.getElementById('batch-scan-input')?.addEventListener('change', handleBatchFilePick);
+  document.getElementById('batch-scan-start')?.addEventListener('click', startBatchScan);
+
+  // Background Scan Popup
+  document.getElementById('bg-scan-toggle')?.addEventListener('click', toggleBgScanList);
+  document.getElementById('bg-scan-close')?.addEventListener('click', dismissBgScanPopup);
+  document.getElementById('bg-scan-view-list')?.addEventListener('click', () => {
+    setView('transactions');
+    dismissBgScanPopup();
+  });
 
   // Budget modal
   document.getElementById('btn-open-budget')?.addEventListener('click', openBudgetModal);
