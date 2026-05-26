@@ -1468,15 +1468,27 @@ a { color: var(--indigo); text-decoration: none; }
   /* Timeline header */
   .timeline-date-header { font-size: 12px; padding: 6px 8px; }
 
-  /* Modal — fit screen properly on mobile */
-  .modal-overlay { left: 0; bottom: 0; padding: 0; align-items: flex-end; }
+  /* Modal — full-screen on mobile, no cropping */
+  .modal-overlay {
+    top: 0; right: 0; bottom: 0; left: 0;
+    padding: 0;
+    align-items: stretch;       /* ขึ้นเต็มความสูงจอ */
+    justify-content: stretch;
+  }
   .modal {
-    padding: 18px 16px;
     width: 100%;
     max-width: 100%;
-    max-height: 92dvh;
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
-    transform: translateY(8px);   /* no scale — เลิก "feel ซูม" */
+    height: 100dvh;             /* เต็มจอ (dynamic viewport — กัน address bar) */
+    max-height: 100dvh;
+    border-radius: 0;
+    padding: 16px;
+    /* รองรับ notch / กล้องรู / status bar / home indicator */
+    padding-top:    calc(16px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    padding-left:   calc(16px + env(safe-area-inset-left, 0px));
+    padding-right:  calc(16px + env(safe-area-inset-right, 0px));
+    transform: translateY(12px);
+    overflow-y: auto;
   }
   .modal-overlay.open .modal { transform: translateY(0); }
   .image-preview-container img { max-height: 100px; }
