@@ -1518,8 +1518,19 @@ function setTransactionType(type) {
   renderRecurringShortcuts(type);
 }
 
-function openModal(id)  { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  updateBodyScrollLock();
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  updateBodyScrollLock();
+}
+// Lock body scroll while any modal is open (fallback for browsers without :has())
+function updateBodyScrollLock() {
+  const anyOpen = document.querySelector('.modal-overlay.open');
+  document.body.style.overflow = anyOpen ? 'hidden' : '';
+}
 
 // ========================
 // Modal: Delete
@@ -1735,7 +1746,7 @@ const bgScan = {
 
 function openBatchScanModal() {
   closeModal('modal-overlay');  // close the single-tx modal if open
-  document.getElementById('batch-scan-modal-overlay').classList.add('open');
+  openModal('batch-scan-modal-overlay');
   batchPickedFiles = [];
   renderBatchPickedList();
   // เปิด file picker ทันที — ไม่ต้องคลิก "เลือกรูป" ก่อน
@@ -1743,7 +1754,7 @@ function openBatchScanModal() {
 }
 
 function closeBatchScanModal() {
-  document.getElementById('batch-scan-modal-overlay').classList.remove('open');
+  closeModal('batch-scan-modal-overlay');
   batchPickedFiles = [];
   document.getElementById('batch-scan-input').value = '';
 }
